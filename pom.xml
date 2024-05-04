@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>AppMusic</groupId>
+  <artifactId>AppMusic</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <dependencies>
+	  <!-- https://mvnrepository.com/artifact/org.kohsuke/github-api -->
+	<dependency>
+		<groupId>org.kohsuke</groupId>
+		<artifactId>github-api</artifactId>
+		<version>1.315</version>
+	</dependency>
+  	<!-- https://mvnrepository.com/artifact/com.formdev/flatlaf -->
+	<dependency>
+	    <groupId>com.formdev</groupId>
+	    <artifactId>flatlaf</artifactId>
+	    <version>3.2.5</version>
+	    <scope>runtime</scope>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/com.toedter/jcalendar -->
+	<dependency>
+	    <groupId>com.toedter</groupId>
+	    <artifactId>jcalendar</artifactId>
+	    <version>1.4</version>
+	</dependency>
+	<!--<dependency>
+		<groupId>org.kohsuke</groupId>
+		<artifactId>github-api</artifactId>
+		<version>1.315</version>
+	</dependency>-->
+	<dependency>
+		<groupId>tds</groupId>
+		<artifactId>CargadorCanciones</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+		<scope>compile</scope>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/org.easymock/easymock -->
+	<dependency>
+	    <groupId>org.easymock</groupId>
+	    <artifactId>easymock</artifactId>
+	    <version>5.2.0</version>
+	    <scope>test</scope>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
+	<dependency>
+	    <groupId>org.junit.jupiter</groupId>
+	    <artifactId>junit-jupiter-api</artifactId>
+	    <version>5.10.2</version>
+	    <scope>test</scope>
+	</dependency>
+
+
+  </dependencies>
+  
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <resources>
+      <resource>
+        <directory>src</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <release>17</release>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
