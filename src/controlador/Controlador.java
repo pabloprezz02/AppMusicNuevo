@@ -2,48 +2,33 @@ package controlador;
 
 import java.util.Date;
 import java.util.EventObject;
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
-
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JTable;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
 
 import org.kohsuke.github.GHUser;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 
-import auxiliares.ComboBoxObserver;
+import com.itextpdf.text.DocumentException;
+
+import auxiliares.generadorPDF.GeneradorPDF;
 import auxiliares.reproductor.Reproductor;
 import controlador.Controlador;
 import descuento.Descuento;
 import descuento.FactoriaDescuento;
-import javafx.scene.media.MediaPlayer;
 import main.Lanzador;
 import modelo.Cancion;
 import modelo.CatalogoCanciones;
-import modelo.CatalogoPlaylists;
 import modelo.CatalogoUsuarios;
 import modelo.Playlist;
 import modelo.Usuario;
@@ -59,10 +44,6 @@ import umu.tds.componente.CancionesEvent;
 import umu.tds.componente.CancionesListener;
 import umu.tds.componente.CargadorCanciones;
 import ventanas.NewVentanaPrincipal;
-import ventanas.VentanaCanciones;
-import ventanas.VentanaLista;
-//import ventanas.VentanaPrincipal;
-import ventanas.VentanaUsuarios;
 
 public class Controlador extends Observable implements CancionesListener, Observer {
 	
@@ -116,17 +97,12 @@ public class Controlador extends Observable implements CancionesListener, Observ
 //		
 //		// PLAYLISTS DEL USUARIO.
 //		private Set<Playlist> listas;
-		private Map<Usuario, String> cadenasPlaylists;
 		
 		private Controlador() {
 			// Inicialización de los filtros.
 			cancionesPorArtista = new HashMap<String, List<Cancion>>();
 			cancionesPorEstilo = new HashMap<String, List<Cancion>>();
 			cancionesPorTitulo = new HashMap<String, List<Cancion>>();
-			
-			// Inicialización del conjunto de Playlists.
-
-			cadenasPlaylists = new HashMap<Usuario, String>();
 
 			// Inicialización de adaptadores y catálogos.
 			inicializarAdaptadores();
@@ -255,7 +231,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		}
 		
 		private void crearTitulo(String titulo) {
-			cancionesPorTitulo.put(titulo, new LinkedList());
+			cancionesPorTitulo.put(titulo, new LinkedList<Cancion>());
 		}
 		
 		/*
@@ -326,11 +302,12 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			return null;
 		}
 		
-		/*
-		 * INSERTAR UNA CANCIÓN EN EL SISTEMA (FILTROS, CATÁLOGO Y ADAPTADOR).
-		 * ACTUALIZA LA CADENA QUE REPRESENTA LAS CANCIONES PARA LAS VENTANAS.
+		/**
+		 * Inserta una Canción en el sistema. Si algún intérprete no estaba, lo inserta. Si el estilo no estaba, lo añade.
+		 * @param c: la Cancion a insertar.
 		 */
-		private void insertarCancionSinNotificar(Cancion c) {
+		private void insertarCancionSinNotificar(Cancion c) 
+		{
 			// Si la canción existía, no hago nada.
 			if(cancionExistente(c))
 				return;
@@ -339,10 +316,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			c.getInterpretes().stream()
 				.filter(interprete -> !existeInterprete(interprete))
 				.forEach(interprete -> crearInteprete(interprete));
-			
-//			if(!existeInterprete(c.getInterprete())) {
-//				crearInteprete(c.getInterprete());
-//			}
 			
 			// Si el estilo no estaba...
 			if(!existeEstilo(c.getEstilo())) {
@@ -382,11 +355,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			 * Inserción en el catálogo:
 			 */
 			catalogoCanciones.addCancion(c);
-			
-			/*
-			 * Actualización de la cadena para el Observer:
-			 */
-//			titulosCanciones += (c.getTitulo() + " ~ " + getCadenaInterpretes(c.getInterpretes()) + "\n");
 		}
 		
 		/*
@@ -447,6 +415,17 @@ public class Controlador extends Observable implements CancionesListener, Observ
 //			actualizarFavoritas();
 		}
 		
+		private void notificarCambioMasReproducidas()
+		{
+			List<Cancion> masReproducidas = getMasReproducidas();
+			List<Object> argumento = new LinkedList<Object>();
+			argumento.add((Object)"MasReproducidas");
+			masReproducidas.stream()
+				.forEach(c -> argumento.add((Object)c));
+			setChanged();
+			notifyObservers(argumento);
+		}
+		
 //		private void actualizarFavoritas()
 //		{
 //			favoritas = new LinkedList<Cancion>(); 
@@ -481,6 +460,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			if(arg instanceof Cancion)
 			{
 				modificarCancion((Cancion)arg);
+				notificarCambioMasReproducidas();
 			}
 		}
 		
@@ -698,8 +678,9 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		}
 		
 		/**
-		 * Método que devuelve si el Usuario que usa la aplicación se ha logueado con GitHub. 
-		 * @return
+		 * Método que devuelve si el Usuario que usa la aplicación se ha logueado con GitHub.
+		 * @param nombreUsuario: el nombre del Usuario. 
+		 * @return true si está logueado con GitHub, false si no.
 		 */
 		public boolean isLogueadoConGitHub(String nombreUsuario)
 		{
@@ -708,6 +689,16 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			if(usuario == null)
 				return false;
 			
+			return isLogueadoConGitHub(usuario);
+		}
+		
+		/**
+		 * Método que devuelve si un Usuario está logueado con GitHub.
+		 * @param usuario: el Usuario a comprobar.
+		 * @return true si está logueado con GitHub, false si no.
+		 */
+		public boolean isLogueadoConGitHub(Usuario usuario)
+		{
 			return usuario instanceof UsuarioGitHub;
 		}
 		
@@ -829,7 +820,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		 * FUNCIÓN QUE DETIENE UNA CANCIÓN.
 		 */
 		public void detenerCancion() {
-			reproductor.pausar();
+			reproductor.parar();
 		}
 		
 		public void reproducirRecientesSec()
@@ -862,7 +853,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			try {
 				p = buscarPlaylist(usuario, playlist);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			reproducirSecuencialmente(p);
@@ -903,7 +893,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			try {
 				p = buscarPlaylist(usuario, playlist);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			reproducirAleatoriamente(p);
@@ -953,16 +942,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 					insertarCancionNotificando(cancion);
 				});
 		}
-		
-//		/*
-//		 * Método para crear la cadena con los nombres de las Playlists.
-//		 */
-//		private void crearCadenaPlaylists() 
-//		{
-//			nombresPlaylists = "Listas\n";
-//			listas.stream()
-//				.forEach(lista -> nombresPlaylists += (lista.getNombre() + "\n"));
-//		}
 		
 		/**
 		 * Método para eliminar la playlist con nombre pasado por argumento para el Usuario con nombre pasado por argumento.
@@ -1020,7 +999,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 				Playlist p = buscarPlaylist(usuario, nombrePlaylist);
 				anadirAPlaylist(p, canciones);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -1051,7 +1029,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 					return;
 				eliminarDePlaylist(p, canciones);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -1076,23 +1053,22 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			actualizarPlaylist(playlist, nuevasCanciones);			
 		}
 		
-		/**
-		 * Método que actualiza la Playlist con nombre pasado por argumento.
-		 * @param nombreLista: el nombre de la Playlist.
-		 * @param canciones: la nueva lista de Canciones de la Playlist.
-		 */
-		private void actualizarPlaylist(Usuario usuario, String nombreLista, List<Cancion> canciones) 
-		{
-			Playlist p = null;
-			try {
-				p = buscarPlaylist(usuario, nombreLista);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			actualizarPlaylist(p, canciones);
-		}
+//		/**
+//		 * Método que actualiza la Playlist con nombre pasado por argumento.
+//		 * @param nombreLista: el nombre de la Playlist.
+//		 * @param canciones: la nueva lista de Canciones de la Playlist.
+//		 */
+//		private void actualizarPlaylist(Usuario usuario, String nombreLista, List<Cancion> canciones) 
+//		{
+//			Playlist p = null;
+//			try {
+//				p = buscarPlaylist(usuario, nombreLista);
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//			
+//			actualizarPlaylist(p, canciones);
+//		}
 		
 		/**
 		 * Método que actualiza la Playlist pasada por argumento con las canciones pasadas por argumento.
@@ -1126,19 +1102,25 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			return crearPlaylist(usuario, nombre, new LinkedList<Cancion>());
 		}
 		
+		/**
+		 * Método que añade una Playlist a un Usuario en el Sistema (modifica la persistencia de la Playlist y del Usuario).
+		 * @param usuarioAplicacion: Usuario al que pertenecerá la Playlist.
+		 * @param playlist: la Playlista a añadir.
+		 */
 		private void anadirPlaylist(Usuario usuarioAplicacion, Playlist playlist)
 		{
 			adaptadorPlaylist.registrarPlaylist(playlist);
 			usuarioAplicacion.addPlaylist(playlist);
 			adaptadorUsuario.modificarUsuario(usuarioAplicacion);
-//			nombresPlaylists += (playlist.getNombre() + "\n");
-			String cadena = cadenasPlaylists.get(usuarioAplicacion) + (playlist.getNombre() + "\n");
-			cadenasPlaylists.put(usuarioAplicacion, cadena);
 			notificarCambioPlaylists(usuarioAplicacion);
 		}
 		
-		/*
-		 * Método para crear una playlist a partir de un nombre y una lista de canciones.
+		/**
+		 * Método que crea una Playlist a partir de un Usuario, un nombre y una lista de canciones.
+		 * @param usuario: Usuario al que pertenece la Playlist.
+		 * @param nombre: nombre de la Playlist.
+		 * @param canciones: lista de Canciones que contendrá la Playlist.
+		 * @return "" si todo ha ido bien; String de error en otro caso.
 		 */
 		public String crearPlaylist(Usuario usuario, String nombre, List<Cancion> canciones) 
 		{			
@@ -1163,9 +1145,11 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		}
 		
 		
-		/*
-		 * REALIZA EL LOGIN DEL USUARIO CON NOMBRE nombre Y CONTRASEÑA contrasena.
-		 * EL USUARIO QUE UTILIZA LA APLICACIÓN QUEDA REGISTRADO EN EL ATRIBUTO usuarioAplicacion.
+		/**
+		 * Método que realiza el Login (comprueba que exista y le crea una VentanaMain) de un Usuario con nombre y contraseña pasados por argumento.
+		 * @param nombre: nombre del Usuario.
+		 * @param contrasena: contraseña del Usuario.
+		 * @return null si todo ha salido bien o un String de error en otro caso.
 		 */
 		public String login(String nombre, char[] contrasena)
 		{
@@ -1183,50 +1167,40 @@ public class Controlador extends Observable implements CancionesListener, Observ
 				return CONTRASENA_INCORRECTA;
 			
 			Usuario usuarioAplicacion = catalogoUsuarios.getUsuario(nombre);
-//			listas = usuarioAplicacion.getPlaylists();
-//			favoritas = new LinkedList<Cancion>();
-//			for(Playlist p:listas) {
-//				nombresPlaylists += p.getNombre() + "\n";
-//				for(Cancion c:p.getCanciones()) {
-//					if(!favoritas.contains(c)) {
-//						favoritas.add(c);
-//					}
-//				}
-//			}
 			
-//			listas.stream()
-//				.forEach(lista -> {
-//					nombresPlaylists += (lista.getNombre() + "\n");
-//					lista.getCanciones().stream()
-//						.filter(cancion -> !favoritas.contains(cancion))
-//						.forEach(cancion -> favoritas.add(cancion));
-//				});
+			crearVentanaMain(nombre, usuarioAplicacion.isPremium());
 			
-			NewVentanaPrincipal ventanaMain = new NewVentanaPrincipal(nombre, usuarioAplicacion.isPremium());
 			// Inicialización del reproductor de canciones.
 			reproductor = Reproductor.getUnicaInstancia();
 			reproductor.addObserver(this);
-//			obs.add(ventanaMain);
+			
 			return null;	// Si la ventana recibe null, entonces se loguea.
+		}
+		
+		/**
+		 * Método que devuelve si un Usuario es premium.
+		 * @param usuario: el Usuario a comprobar.
+		 * @return: true si es Premium, false si no.
+		 */
+		public boolean esPremium(Usuario usuario)
+		{
+			return usuario.isPremium();
+		}
+		
+		/**
+		 * Método que crea una VentanaMain para un Usuario con nombre pasado por argumento.
+		 * @param usuario: el nombre del Usuario.
+		 * @param premium: si el Usuario es premium. En caso de serlo, la ventana se inicializará con dos botones extra.
+		 */
+		private void crearVentanaMain(String usuario, boolean premium)
+		{
+			new NewVentanaPrincipal(usuario, premium);
 		}
 		
 		private String formatearFecha(Date fecha) {
 			SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
 			return format.format(fecha);
 		}
-		
-		// COMO NO SABEMOS SI LAS VENTANAS SIGUEN ABIERTAS O ACTIVAS, SE COMPRUEBA QUE EL OBSERVADOR SIGA ACTIVO.
-//		@Override
-//		public boolean comprobar(Observer o) {
-//			if(o instanceof VentanaLista)
-//				if(((VentanaLista)o).isActive())
-//					return true;
-//				else {
-//					deleteObserver(o);
-//					return false;
-//				}
-//			return true;
-//		}
 		
 		/**
 		 * Método que devuelve una lista con los nombres de Usuario del sistema.
@@ -1238,14 +1212,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 					.map(u -> u.getNombre())
 					.collect(Collectors.toList());
 		}
-		
-//		public String mostrarUsuarios() {
-//			return nombresUsuarios;
-//		}
-//		
-//		public String mostrarCanciones() {
-//			return titulosCanciones;
-//		}
 		
 		/*
 		 * FUNCIÓN QUE DEVUELVE TODOS LOS ESTILOS MUSICALES DEL SISTEMA.
@@ -1288,7 +1254,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			try {
 				playlist = buscarPlaylist(usuario, nombreLista);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -1347,13 +1312,29 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			return Cancion.getCadenaInterpretes(c.getInterpretes());
 		}
 		
+		public int getNumReproducciones(Cancion c)
+		{
+			return c.getNumReproducciones();
+		}
+		
+		/**
+		 * Método que devuelve las Canciones del Sistema en orden de reproducciones.
+		 * @return la Lista de canciones ordenada por número de reproducciones.
+		 */
+		public List<Cancion> getMasReproducidas()
+		{
+			return catalogoCanciones.getCanciones().stream()
+				.sorted((c1, c2) -> c2.getNumReproducciones() - c1.getNumReproducciones())
+				.collect(Collectors.toList());
+		}
+		
 		/**
 		 * Método para desloguearse (se pone unicaInstancia a null, de modo que se "reinicia" todo.
 		 */
 		public void logout()
 		{
 			Reproductor.reiniciar();
-			this.unicaInstancia = null;
+//			Controlador.unicaInstancia = null;
 //			ventanaMain.getFrame().dispose();
 			Lanzador.main(null);
 		}
@@ -1373,6 +1354,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 				throw new Exception("Intentando hacer premium un Usuario no existente en el Sistema.");
 			
 			user.setPremium(true);
+			adaptadorUsuario.modificarUsuario(user);
 			return aplicarDescuentos(user, parado);
 		}
 		
@@ -1400,7 +1382,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		 * @param usuario: Usuario a comprobar si es joven.
 		 * @return true si es menor de 25 años, false si no.
 		 */
-		private boolean isJoven(Usuario usuario)
+		private static boolean isJoven(Usuario usuario)
 		{
 			String fechaNacimiento = usuario.getFechaNacimiento();
 			int actualYear = LocalDate.now().getYear();
@@ -1412,7 +1394,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			int mesNacimiento = Integer.parseInt(elementosFechaNacimiento[1]);
 			int diaNacimiento = Integer.parseInt(elementosFechaNacimiento[0]);
 			
-			if(EDAD_JOVEN <= actualYear - yearNacimiento)
+			if(EDAD_JOVEN >= actualYear - yearNacimiento)
 				return true;
 			if(EDAD_JOVEN == actualYear - yearNacimiento + 1)
 			{
@@ -1440,14 +1422,40 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		}
 		
 		
-		
-		
 		/**
 		 * Clase anidada porque únicamente el Controlador la usará. Simplemente, se utilizará como subclase de Usuario para comprobar si este ha sido logueado con GitHub.
 		 */
 		class UsuarioGitHub extends Usuario {
 			public UsuarioGitHub(String nombre, String password, String email, String fechaNacimiento) {
 				super(nombre, password, email, fechaNacimiento);
+			}
+		}
+		
+		/**
+		 *	Método para generar el PDF con los datos del Usuario.
+		 */
+		public void generarPDF(String ubicacion, Usuario usuario)
+		{
+			String contenido = "";
+			List<String> datosListas = new LinkedList<String>();
+			for(Playlist p: usuario.getPlaylists())
+			{
+				String datosLista = "Nombre de la lista: " + p.getNombre() + "\n";
+				for(Cancion c: p.getCanciones())
+				{
+					datosLista +=
+							"título: " + c.getTitulo()
+							+ ", intérpretes: " + Cancion.getCadenaInterpretes(c.getInterpretes())
+							+ ", estilo: " + c.getEstilo()
+							+ "\n";
+				}
+				contenido += datosLista + "\n";
+			}
+			try {
+				GeneradorPDF.generarPDF(usuario.getNombre() + ".pdf", ubicacion, contenido);
+			} catch (FileNotFoundException | DocumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 }

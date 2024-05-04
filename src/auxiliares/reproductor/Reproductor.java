@@ -15,9 +15,13 @@ import java.util.List;
 import java.util.Random;
 
 import controlador.Controlador;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
+import javafx.util.Duration;
 import modelo.Cancion;
 import observador.Observable;
 import observador.Observer;
@@ -135,8 +139,52 @@ public class Reproductor extends Observable {
 
 			Media media = new Media(mp3.toFile().toURI().toString());
 			mediaPlayer = new MediaPlayer(media);
-//				cancionActual = cancion;
+			
 			mediaPlayer.play();
+//			cancionActual = cancion;
+			
+			 mediaPlayer.setOnReady(() -> {
+		            // Obtener la duración total del medio
+		            Duration totalDuration = media.getDuration();
+		            
+		            // Crear un Timeline para actualizar el tiempo restante cada segundo
+		            Timeline timeline = new Timeline(
+		                    new KeyFrame(Duration.seconds(0.1), event -> {
+		                        // Obtener el tiempo actual de reproducción
+		                        Duration currentTime = mediaPlayer.getCurrentTime();
+		                        int porcentaje = (int)(1000 * currentTime.toSeconds() / totalDuration.toSeconds());
+		                        setChanged();
+		                        notifyObservers(porcentaje);
+		                    })
+		            );
+		            // Repetir el Timeline indefinidamente
+		            timeline.setCycleCount(Animation.INDEFINITE);
+		            // Iniciar el Timeline
+		            timeline.play();
+		        });
+//			
+//			mediaPlayer.setOnPlaying(new Runnable() {
+//				
+//				@Override
+//				public void run() {
+//					MediaPlayer.Status estado = mediaPlayer.getStatus();
+//					while(estado == MediaPlayer.Status.PLAYING)
+//					{
+//						int porcentaje = (int) (1000 * (mediaPlayer.getCurrentTime().toSeconds() / mediaPlayer.getTotalDuration().toSeconds()));
+//						
+//						setChanged();
+//						notifyObservers(porcentaje);
+//						try {
+//							Thread.sleep(100);
+//						} catch (InterruptedException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//						estado = mediaPlayer.getStatus();
+//					}
+//				}
+//			});
+			
 			cancion.incrementarNumReproducciones();
 //			controlador.modificarCancion(cancion);
 			for(Observer ob: obs)
@@ -182,6 +230,7 @@ public class Reproductor extends Observable {
 		}
 		reproduciendo = null;
 		iniciarCancionInsertando(cancion);
+		cancionActual = cancion;
 		mediaPlayer.setOnEndOfMedia(
 			new Runnable()
 			{
@@ -357,11 +406,25 @@ public class Reproductor extends Observable {
 	 */
 	public void reanudarCancion()
 	{
-		if(cancionActual == null)
+		if(mediaPlayer == null)
 			return;
-		if(mediaPlayer.getStatus().equals(MediaPlayer.Status.PAUSED)
-			|| mediaPlayer.getStatus().equals(MediaPlayer.Status.STOPPED))
-			mediaPlayer.play();	
+		if(mediaPlayer.getStatus().equals(MediaPlayer.Status.PAUSED))
+			mediaPlayer.play();
+		if(mediaPlayer.getStatus().equals(MediaPlayer.Status.STOPPED))
+		{
+			Cancion cancion = null;
+			if(cancionActual != null)
+			{
+				cancion = cancionActual;
+			}
+			else
+			{
+				if(reproduciendo == null)
+					return;
+				cancion = reproduciendo.getActual();
+			}
+			iniciarCancionNoInsertando(cancion);
+		}
 	} 
 	
 	/**
@@ -383,6 +446,8 @@ public class Reproductor extends Observable {
 	 */
 	public void pausar()
 	{
+		if(mediaPlayer == null)
+			return;
 		if(mediaPlayer.getStatus().equals(MediaPlayer.Status.PLAYING))
 			mediaPlayer.pause();
 	}
@@ -418,317 +483,4 @@ public class Reproductor extends Observable {
 			reproducirAnteriorLista();
 		}
 	}
-	
-//	// Singleton.
-//	public static Reproductor getUnicaInstancia() {
-//		if(unicaInstancia == null)
-//			unicaInstancia = new Reproductor();
-//		return unicaInstancia;
-//	}
-//	
-//	public Collection<Cancion> getRecientes()
-//	{
-//		return new LinkedList<Cancion>(recientes.getLista());
-//	}
-//	
-//	public Cancion getCancionActual() {
-////		return cancionActual;
-//		return recientes.getActual();
-//	}
-//	
-//	/*
-//	 * Método para cambiar la lista que se está reproduciendo.
-//	 */
-//	private void cambiarListaReproduccion(List<Cancion> canciones)
-//	{
-//		try {
-//			reproduciendo = new ListaConIndice<Cancion>(canciones);
-//		} catch (Exception e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//	}
-//	
-////	/*
-////	 * Play para cada uno de los casos posibles a la hora de reproducir una canción. Únicamente usado para reproducir UNA canción que manda el controlador.
-////	 */
-////	public void playCancion(Cancion cancion) 
-////	{
-////		reproduciendo = recientes;
-////		// Caso especial: cuando se ha enviado la misma canción.
-////		if(cancion.equals(getCancionActual()))
-////			reproducirActual();
-////		// Si no es la misma, se reproduce de forma normal.
-////		else
-////		{
-////			reproducirCancion(cancion);
-////		}
-////	}
-//	
-//	/*
-//	 * Método para reproducir la Canción que ya estaba sonando.
-//	 */
-//	private void reproducirActual() 
-//	{
-//		switch(getEstado())
-//		{
-//		// En caso de estar pausado, la canción se continua.
-//		case PAUSED:
-//			continuarCancion();
-//			break;
-//		// En caso de estar parado, la canción se reinicia.
-//		case STOPPED:
-//			continuarDesdeParado();
-//			break;
-//		// En otro caso no se hace nada.
-//		default:
-//			break;
-//		}
-//	}
-//	
-//	/*
-//	 * Continua la canción que se estaba reproduciendo.
-//	 */
-//	public void continuarCancion() 
-//	{
-//		MediaPlayer.Status estado = getEstado();
-//
-//		// Si no hay reproductor, no hace nada.
-//		if(estado == null)
-//			return;
-//		// Si no estaba reproduciendo una canción antes, no hace nada.
-//		if(!estado.equals(MediaPlayer.Status.PAUSED))
-//			return;
-//		mediaPlayer.play();
-//	}
-//	
-//	/*
-//	 * Reproducir cuando está parado.
-//	 */
-//	public void continuarDesdeParado()
-//	{
-//		Cancion cancionActual = getCancionActual();
-//		if(cancionActual == null)
-//			return;
-////		reproducirCancionSinInsertar(cancionActual);
-//		mediaPlayer.setOnEndOfMedia(
-//				new Runnable()
-//				{
-//					@Override
-//					public void run() 
-//					{
-//						reproducirSiguientes();
-//					}
-//				});
-//	}
-//	
-//	/*
-//	 * Reproducir una canción seleccionada, no de una lista.
-//	 */
-//	private void reproducirCancion(Cancion c)
-//	{
-//		if(recientes.getTamano() == maxRecientes)
-//			recientes.eliminarPrimero();
-//		
-//		if(reproduciendo != recientes)
-//			recientes.addElemento(c);
-//		mediaPlayer.setOnEndOfMedia(
-//				new Runnable()
-//				{
-//					@Override
-//					public void run() 
-//					{
-//						reproducirSiguientes();
-//					}
-//				});
-////		reproducirCancionSinInsertar(c);
-//	}
-//	
-////	/*
-////	 * Reproducir una canción PERO sin añadirla a recientes.
-////	 */
-////	private void reproducirCancionSinInsertar(Cancion c)
-////	{
-////		iniciarReproduccion(c);
-////		// La idea de esto es que, si hay más canciones posteriores, se reproduzcan.
-////		mediaPlayer.setOnEndOfMedia(
-////				new Runnable()
-////				{
-////					@Override
-////					public void run() 
-////					{
-////						reproducirSiguientes();
-////					}
-////				});
-////	}
-//	
-//	/*
-//	 * Reproduce una canción desde el principio. Únicamente tomará la ruta de la Canción y la reproducirá.
-//	 */
-//	private void iniciarReproduccion(Cancion cancion)
-//	{
-//		stopCancion();
-//		String url = cancion.getRutaFichero();
-//		URL uri = null;
-//		try 
-//		{
-//			com.sun.javafx.application.PlatformImpl.startup(() -> {
-//			});
-//
-//			uri = new URL(url);
-//
-//			System.setProperty("java.io.tmpdir", tempPath);
-//			Path mp3 = Files.createTempFile("now-playing", ".mp3");
-//
-//			System.out.println(mp3.getFileName());
-//			try (InputStream stream = uri.openStream()) {
-//				Files.copy(stream, mp3, StandardCopyOption.REPLACE_EXISTING);
-//			}
-//			System.out.println("finished-copy: " + mp3.getFileName());
-//
-//			Media media = new Media(mp3.toFile().toURI().toString());
-//			mediaPlayer = new MediaPlayer(media);
-////			cancionActual = cancion;
-//			mediaPlayer.play();
-//		} 
-//		catch (MalformedURLException e1) 
-//		{
-//			e1.printStackTrace();
-//		} 
-//		catch (IOException e1) 
-//		{
-//			e1.printStackTrace();
-//		}
-//	}
-//	
-//	/*
-//	 * Reproducir la siguiente canción.
-//	 */
-//	public boolean siguiente()
-//	{
-//		Cancion c = reproduciendo.getSiguienteElemento();
-//		if(c != null)
-//		{
-////			reproducirCancionSinInsertar(c);
-////			if(reproduciendo == recientes)
-////				reproducirCancionSinInsertar(c);
-////			else
-////				reproducirCancion(c);
-//			reproducirCancion(c);
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	/*
-//	 * Reproducir la anterior canción.
-//	 */
-//	public boolean anterior() 
-//	{
-//		Cancion c = reproduciendo.getElementoAnterior();
-//		if(c != null)
-//		{
-////			if(reproduciendo == recientes)
-////				reproducirCancionSinInsertar(c);
-////			else
-////				reproducirCancion(c);
-//			reproducirCancion(c);
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	
-//	public void stopCancion() {
-//		if(mediaPlayer != null)
-//			mediaPlayer.stop();
-//		File directorio = new File(tempPath);
-//		String[] files = directorio.list();
-//		for (String archivo : files) {
-//			File fichero = new File(tempPath + File.separator + archivo);
-//			fichero.delete();
-//		}
-//	}
-//	
-//	public void pauseCancion() {
-//		mediaPlayer.pause();
-//	}
-//	
-//	/*
-//	 * Método para reproducir las siguientes canciones que haya en "reproduciendo".
-//	 */
-//	private void reproducirSiguientes()
-//	{
-//		Cancion c = reproduciendo.getSiguienteElemento();
-//		if(c == null)
-//			return;
-//		else
-//		{
-//			reproducirCancion(c);
-////			mediaPlayer.setOnEndOfMedia(
-////					new Runnable()
-////					{
-////						@Override
-////						public void run() 
-////						{
-////							reproducirSiguientes();
-////						}
-////					});
-//		}
-//	}
-//	
-//	public void reproducirRecientes()
-//	{
-//		reproduciendo = recientes;
-//		Cancion cancion = reproduciendo.getPrimero();
-//		if(cancion == null)
-//			return;
-//		reproducirCancion(cancion);
-//	}
-//	
-//	/*
-//	 * Método para reproducir secuencialmente una lista de canciones.
-//	 */
-//	public void reproducirSecuencialmente(List<Cancion> canciones)
-//	{
-//		cambiarListaReproduccion(canciones);
-//		
-//		Cancion c = reproduciendo.getPrimero();
-//		if(c == null)
-//			return;
-//		reproducirCancion(c);
-//	}
-//	
-//	private LinkedList<Integer> indicesDisponibles;
-//	
-//	private void inicializarIndices(int tamano)
-//	{
-//		indicesDisponibles = new LinkedList<Integer>();
-//		for(int i = 0; i < tamano; i++)
-//			indicesDisponibles.add(i);
-//	}
-//	
-//	private List<Cancion> desordenarLista(List<Cancion> canciones)
-//	{
-//		LinkedList<Cancion> cancionesDesordenadas = new LinkedList<Cancion>();
-//		
-//		for(int i = 0; i < canciones.size(); i++)
-//		{
-//			Random r = new Random();
-//			int indice = r.nextInt(indicesDisponibles.size());
-//			cancionesDesordenadas.add(canciones.get(indicesDisponibles.get(indice)));
-//			indicesDisponibles.remove(indice);
-//		}
-//		return cancionesDesordenadas;
-//	}
-//	
-//	/*
-//	 * Método para reproducir aleatoriamente una lista de canciones.
-//	 */
-//	public void reproducirAleatoriamente(List<Cancion> canciones)
-//	{
-//		inicializarIndices(canciones.size());
-//		List<Cancion> cancionesDesordenadas = desordenarLista(canciones);
-//		reproducirSecuencialmente(cancionesDesordenadas);
-//	}
 }

@@ -17,6 +17,8 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
 import java.awt.Insets;
+import java.awt.Point;
+
 import javax.swing.ImageIcon;
 import java.awt.CardLayout;
 import javax.swing.border.MatteBorder;
@@ -47,6 +49,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,14 +69,17 @@ import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
 import com.fasterxml.jackson.databind.ser.std.StdKeySerializers.Default;
 
 import auxiliares.ComboBoxObserver;
+import auxiliares.ComponenteObservador;
 import auxiliares.ListObserver;
 import auxiliares.ObservadorListasUsuario;
+import auxiliares.reproductor.Reproductor;
 import controlador.Controlador;
 import modelo.Cancion;
 import modelo.Playlist;
@@ -95,10 +101,11 @@ public class NewVentanaPrincipal extends JFrame {
 	private static int COLUMNA_ESTILO = 2;
 	private static int COLUMNA_SELECCIONADA = 3;
 	private static int NUM_COLUMNAS = 4;
+	private static int NUM_FILAS_MAS_REPRODUCIDAS = 10;
 	public static String[] NOMBRES_COLUMNAS = {"Título", "Intérprete", "Estilo", ""};
+	public static String[] NOMBRES_COLUMNAS_MAS_REPRODUCIDAS = {"Título", "Intérprete", "Estilo", "Reproducciones"};
 	
 	private JFrame frmAppmusic;
-	private boolean mostrandoPanelReproduccion = false;
 	private JTextField textFieldIntepreteBuscar;
 	private JTextField textFieldTituloBuscar;
 	private String nombreUsuario;
@@ -108,11 +115,13 @@ public class NewVentanaPrincipal extends JFrame {
 	private JPanel panelMisPlayLists;
 	private JPanel panelVacioListas;
 	private JPanel panelVacioCardGeneral;
+	private JPanel panelMasReproducidas;
 	
 	// Tablas
 	private JTable tablaCancionesBuscadas = null;
 	private JTable tablaGestionPlaylists = null;
 	private JTable tablaPlaylists = null;
+	private JTable tablaMasReproducidas;
 
 	// PROPIEDADES PARA LAS LISTAS.
 	private Set<String> elementosLista;
@@ -164,33 +173,6 @@ public class NewVentanaPrincipal extends JFrame {
 	{
 		return tablaPlaylists;
 	}
-	
-//	private JTable inicializarTablaCanciones(String nombre)
-//	{
-//		Object[][] data = {null, null, null, null};
-//		DefaultTableModel modelo = new DefaultTableModel(data, NOMBRES_COLUMNAS);
-//		JTable tabla = new JTable(modelo) {
-//			@Override
-//			public Class getColumnClass(int column) {
-//				switch(column) {
-//					case 0:
-//						return String.class;
-//					case 1:
-//						return String.class;
-//					case 2:
-//						return String.class;
-//					case 3:
-//						return Boolean.class;
-//					default:
-//						return null;
-//				}
-//			}
-//		};
-//		tabla.setName(nombre);
-//		tabla = darFormatoATabla(tabla);
-//		return tabla;
-//	}
-	
 	
 	public JFrame getFrame()
 	{
@@ -255,31 +237,28 @@ public class NewVentanaPrincipal extends JFrame {
 	
 	private static Object[][] DATOS_INICIALES_TABLAS = {null, null, null, null};
 	
-//	// Este método, básicamente, inicializa una tabla de columnas "Título", "Intérprete", "Estilo" y seleccionada.
-//	private JTable inicializarTablaCanciones(Collection<Cancion> canciones)
-//	{
-//		Object[][] datos = crearFilasTablaCanciones(canciones);
-//		TableModel modelo = new DefaultTableModel(datos, NOMBRES_COLUMNAS);
-//		JTable tabla = new JTable(modelo) {
-//			@Override
-//			public Class getColumnClass(int column) {
-//				switch(column) {
-//					case 0:
-//						return String.class;
-//					case 1:
-//						return String.class;
-//					case 2:
-//						return String.class;
-//					case 3:
-//						return Boolean.class;
-//					default:
-//						return null;
-//				}
-//			}
-//		};
-//		tabla = darFormatoATabla(tabla);
-//		return tabla;
-//	}
+	private DefaultTableModel crearModeloMasReproducidas(List<Cancion> canciones)
+	{
+		return new DefaultTableModel(crearFilasMasReproducidas(canciones), NOMBRES_COLUMNAS_MAS_REPRODUCIDAS);
+	}
+	
+	private Object[][] crearFilasMasReproducidas(List<Cancion> canciones)
+	{
+		int numCancionesAMostrar = NUM_FILAS_MAS_REPRODUCIDAS;
+		if(canciones.size() < numCancionesAMostrar)
+			numCancionesAMostrar = canciones.size();
+		Object[][] datosTabla = new Object[numCancionesAMostrar][NUM_COLUMNAS];
+		
+		for(int i = 0; i < numCancionesAMostrar; i++)
+		{
+			Cancion c = canciones.get(i);
+			datosTabla[i][0] = controlador.getTituloCancion(c);
+			datosTabla[i][1] = controlador.getInterpreteCancion(c);
+			datosTabla[i][2] = controlador.getEstiloCancion(c);
+			datosTabla[i][3] = controlador.getNumReproducciones(c); 
+		}
+		return datosTabla;
+	}
 	
 	private DefaultTableModel crearModelo(Collection<Cancion> canciones)
 	{
@@ -291,6 +270,7 @@ public class NewVentanaPrincipal extends JFrame {
 	{
 		Object[][] datosTabla = new Object[canciones.size()][NUM_COLUMNAS];
 		int i = 0;
+		
 		for(Cancion c: canciones)
 		{
 			datosTabla[i][0] = controlador.getTituloCancion(c);
@@ -301,18 +281,6 @@ public class NewVentanaPrincipal extends JFrame {
 		}
 		return datosTabla;
 	}
-	
-	
-//	@Override
-//	public void update(Observable o, Object arg) {
-//		if(arg instanceof String) {
-//			char[] contenido = ((String) arg).toCharArray();
-//			if(contenido[0] == 'P') {
-//				contenido[0] = '\n';
-//				elementosLista.add(new String(contenido));
-//			}
-//		}
-//	}
 	
 	public void inicializarListaPlaylists(List<String> playlists) {
 		for(String lista:playlists) {
@@ -336,6 +304,7 @@ public class NewVentanaPrincipal extends JFrame {
 		int filaSeleccionada = tabla.getSelectedRow();
 		if(filaSeleccionada != -1)
 		{
+			tabla.clearSelection();
 			List<Cancion> canciones = new LinkedList<Cancion>();
 			for(int i = filaSeleccionada; i < tabla.getRowCount(); i++)
 			{
@@ -368,7 +337,7 @@ public class NewVentanaPrincipal extends JFrame {
 	/**
 	 * Initialize the contents of the frame.
 	 */
-	private void initialize() {
+	public void initialize() {
 		frmAppmusic = new JFrame();
 		frmAppmusic.setVisible(true);
 		frmAppmusic.setIconImage(Toolkit.getDefaultToolkit().getImage(NewVentanaPrincipal.class.getResource("/recursos/iconoAppMusicGrand.png")));
@@ -486,50 +455,6 @@ public class NewVentanaPrincipal extends JFrame {
 			scrollPaneTablaGestion.setVisible(true);
 			panelReproduccion.setVisible(true);
 			cambiarPanelCardCentro(panelGestionPlaylists);
-			
-//			panelReproduccion.setVisible(true);
-//			tablaGestionPlaylists = controlador.crearTablaGestionPlaylist(textFieldTituloPlaylist.getText());
-//			tablaGestionPlaylists.setGridColor(new Color(0, 0, 0));
-//			tablaGestionPlaylists.setRequestFocusEnabled(false);
-//			tablaGestionPlaylists.setShowGrid(false);
-//			tablaGestionPlaylists.setSelectionBackground(new Color(0, 172, 0));
-//			tablaGestionPlaylists.setForeground(new Color(0, 255, 0));
-//			tablaGestionPlaylists.setFont(new Font("Tahoma", Font.PLAIN, 14));
-//			tablaGestionPlaylists.setBackground(new Color(49, 49, 49));
-//			panelTablaGestion.setLayout(new BorderLayout(0, 0));
-//			
-//			JScrollPane scrollPaneTablaGestion = new JScrollPane(tablaGestionPlaylists);
-//			panelTablaGestion.add(scrollPaneTablaGestion);
-			
-//			DefaultTableModel modelo = controlador.cargarDatosPlaylist(textFieldTituloPlaylist.getText());
-//			if(modelo != null) {
-//				tablaGestionPlaylists.setModel(modelo);
-//			}else {
-//				cancionesSeleccionadas = new LinkedList<Cancion>();
-//				LinkedList<Object[]> filasTablaGestion = new LinkedList<Object[]>();
-//				for(int i = 0; i < cancionesBuscadas.size(); i++) {
-//					if((boolean)tablaCancionesBuscadas.getModel().getValueAt(i, COLUMNA_SELECCIONADA)) {	// Si está seleccionada
-//						cancionesSeleccionadas.add(cancionesBuscadas.get(i));
-//						Object[] elementos = new Object[NUM_COLUMNAS];
-//						for(int j = 0; j < NUM_COLUMNAS; j++) {
-//							elementos[j] = tablaCancionesBuscadas.getModel().getValueAt(i, j);
-//						}
-//						filasTablaGestion.add(elementos);
-//					}
-//				}
-//				Object[][] filas = new Object[filasTablaGestion.size()][];
-//				for(int i = 0; i < filasTablaGestion.size(); i++) {
-//					filas[i] = filasTablaGestion.get(i);
-//				}
-//				modelo = new DefaultTableModel(filas, NOMBRES_COLUMNAS);
-//				tablaGestionPlaylists.setModel(modelo);
-//			}
-			
-//			cambiarPanelCardCentro(panelGestionPlaylists);
-			
-//			panelCentralMostrado.setVisible(false);
-//			panelCentralMostrado = panelGestionPlaylists;
-//			panelGestionPlaylists.setVisible(true);
 		});
 		botonGestion_1.setBorder(null);
 		botonGestion_1.setContentAreaFilled(false);
@@ -577,9 +502,82 @@ public class NewVentanaPrincipal extends JFrame {
 			panelReproduccion.setVisible(true);
 		});
 		
+		List<Cancion> cancionesMasReproducidas = controlador.getMasReproducidas();
+		tablaMasReproducidas = new JTable(crearModeloMasReproducidas(cancionesMasReproducidas)) {
+			@Override
+			public Class getColumnClass(int column) {
+				switch(column) {
+					case 0:
+						return String.class;
+					case 1:
+						return String.class;
+					case 2:
+						return String.class;
+					case 3:
+						return Integer.class;
+					default:
+						return null;
+				}
+			}
+		};
+		tablaMasReproducidas.setDefaultEditor(Object.class, null);
+		tablaMasReproducidas.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent e) {
+				if(e.getClickCount() == 2)
+				{
+					mandarAReproducir(tablaMasReproducidas);
+				}
+			};
+		});
+		tablaMasReproducidas.setShowGrid(false);
+		tablaMasReproducidas.setBackground(new Color(49, 49, 49));
+		tablaMasReproducidas.setGridColor(new Color(0, 0, 0));
+		tablaMasReproducidas.setForeground(new Color(0, 255, 128));
+		tablaMasReproducidas.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		tablaMasReproducidas.setRequestFocusEnabled(false);
+		tablaMasReproducidas.setSelectionBackground(new Color(0, 172, 0));
+		
+		ComponenteObservador tablaObservadora = new ComponenteObservador(tablaMasReproducidas) {
+			
+			@Override
+			public void update(Observable o, Object arg) {
+				if(arg == null || !(arg instanceof List))
+					return;
+				
+				List<Object> argumento = new LinkedList<Object>((List<Object>) arg);
+				
+				if(!(argumento.get(0) instanceof String))
+					return;
+				
+				if(((String)argumento.get(0)).equals("MasReproducidas"))
+				{
+					argumento.remove(0);
+					if(argumento.stream()
+							.anyMatch(elemento -> !(elemento instanceof Cancion)))
+						return;
+					
+					List<Cancion> canciones = argumento.stream()
+							.map(elemento -> (Cancion)elemento)
+							.collect(Collectors.toList());
+					JTable componente = (JTable)this.getComponente();
+					componente.setModel(crearModeloMasReproducidas(canciones));
+					componente.setVisible(false);
+					componente.setVisible(true);
+				}				
+			}
+		};
+		controlador.addObserver(tablaObservadora);
+		
 		JButton botonMasReproducidas = new JButton("Más Reproducidas");
+		botonMasReproducidas.addActionListener(e ->
+		{
+//			List<Cancion> cancionesMasReproducidas = controlador.getMasReproducidas();
+//			tablaMasReproducidas.setModel(crearModeloMasReproducidas(cancionesMasReproducidas));
+			cambiarPanelCardCentro(panelMasReproducidas);
+			panelReproduccion.setVisible(true);
+		});
 		botonMasReproducidas.setContentAreaFilled(false);
-		botonMasReproducidas.setVisible(false);
+		botonMasReproducidas.setVisible(usuario.isPremium());
 		botonMasReproducidas.setBorder(null);
 		botonMasReproducidas.setHorizontalAlignment(SwingConstants.LEFT);
 		botonMasReproducidas.setIconTextGap(20);
@@ -593,20 +591,34 @@ public class NewVentanaPrincipal extends JFrame {
 		gbc_botonMasReproducidas.gridy = 4;
 		panelLateralIzq.add(botonMasReproducidas, gbc_botonMasReproducidas);
 		
-		JButton btnNewButton = new JButton("Generar PDF");
-		btnNewButton.setContentAreaFilled(false);
-		btnNewButton.setHorizontalAlignment(SwingConstants.LEFT);
-		btnNewButton.setIconTextGap(20);
-		btnNewButton.setBorder(null);
-		btnNewButton.setIcon(new ImageIcon(NewVentanaPrincipal.class.getResource("/recursos/archivo-pdf (1).png")));
-		btnNewButton.setFont(new Font("Tahoma", Font.PLAIN, 16));
-		btnNewButton.setBorderPainted(false);
-		GridBagConstraints gbc_btnNewButton = new GridBagConstraints();
-		gbc_btnNewButton.anchor = GridBagConstraints.WEST;
-		gbc_btnNewButton.insets = new Insets(0, 0, 5, 5);
-		gbc_btnNewButton.gridx = 1;
-		gbc_btnNewButton.gridy = 5;
-		panelLateralIzq.add(btnNewButton, gbc_btnNewButton);
+		JButton botonGenerarPDF = new JButton("Generar PDF");
+		botonGenerarPDF.addActionListener(e -> 
+		{
+			JFileChooser fileChooser = new JFileChooser();
+			fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+			File workingDirectory = new File(System.getProperty("user.dir"));
+			fileChooser.setCurrentDirectory(workingDirectory);
+			int result = fileChooser.showOpenDialog(frmAppmusic);
+			if(result == JFileChooser.APPROVE_OPTION)
+			{
+				String ubicacion = fileChooser.getSelectedFile().getAbsolutePath();
+				controlador.generarPDF(ubicacion, usuario);
+			}
+		});
+		botonGenerarPDF.setVisible(usuario.isPremium());
+		botonGenerarPDF.setContentAreaFilled(false);
+		botonGenerarPDF.setHorizontalAlignment(SwingConstants.LEFT);
+		botonGenerarPDF.setIconTextGap(20);
+		botonGenerarPDF.setBorder(null);
+		botonGenerarPDF.setIcon(new ImageIcon(NewVentanaPrincipal.class.getResource("/recursos/archivo-pdf (1).png")));
+		botonGenerarPDF.setFont(new Font("Tahoma", Font.PLAIN, 16));
+		botonGenerarPDF.setBorderPainted(false);
+		GridBagConstraints gbc_botonGenerarPDF = new GridBagConstraints();
+		gbc_botonGenerarPDF.anchor = GridBagConstraints.WEST;
+		gbc_botonGenerarPDF.insets = new Insets(0, 0, 5, 5);
+		gbc_botonGenerarPDF.gridx = 1;
+		gbc_botonGenerarPDF.gridy = 5;
+		panelLateralIzq.add(botonGenerarPDF, gbc_botonGenerarPDF);
 		botonMisPlaylists_1.setBorder(null);
 		botonMisPlaylists_1.setContentAreaFilled(false);
 		botonMisPlaylists_1.setHorizontalAlignment(SwingConstants.LEFT);
@@ -712,7 +724,6 @@ public class NewVentanaPrincipal extends JFrame {
 			int result = fileChooserFicheroCanciones.showOpenDialog(frmAppmusic);
 			if (result == JFileChooser.APPROVE_OPTION) {
 				File selectedFile = fileChooserFicheroCanciones.getSelectedFile();
-//System.out.println("Nombre del fichero: " + selectedFile.getAbsolutePath());
 				if(controlador.cargarCanciones(selectedFile.getAbsolutePath()))
 					System.out.println("Cargadas las canciones con éxito.");
 				else
@@ -749,24 +760,31 @@ public class NewVentanaPrincipal extends JFrame {
 		panelBotonesArriba.setLayout(new BoxLayout(panelBotonesArriba, BoxLayout.X_AXIS));
 		
 		// Cuando un Usuario esté logueado con GitHub no se va a dar la opción de hacerse premium.
-		if(!controlador.isLogueadoConGitHub(nombreUsuario))
+		if(!controlador.isLogueadoConGitHub(usuario))
 		{
-			JButton botonConvertirPremium = new JButton("Premium");
-			botonConvertirPremium.addActionListener(e ->
+			if(!controlador.esPremium(usuario))
 			{
-				DialogoParado dialogo = new DialogoParado(frmAppmusic);
-				boolean parado = dialogo.showDialog();
-				try {
-					float precio = controlador.hacerPremium(nombreUsuario, parado);
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			});
-			botonConvertirPremium.setBackground(new Color(0, 0, 0));
-			botonConvertirPremium.setForeground(new Color(255, 255, 255));
-			botonConvertirPremium.setFont(new Font("Tahoma", Font.PLAIN, 14));
-			panelBotonesArriba.add(botonConvertirPremium);
+				JButton botonConvertirPremium = new JButton("Premium");
+				botonConvertirPremium.addActionListener(e ->
+				{
+					DialogoParado dialogo = new DialogoParado(frmAppmusic);
+					boolean parado = dialogo.showDialog();
+					try {
+						float precio = controlador.hacerPremium(nombreUsuario, parado);
+						System.out.println("Precio de la Aplicación: " + precio);
+						botonConvertirPremium.setVisible(false);
+						botonMasReproducidas.setVisible(true);
+						botonGenerarPDF.setVisible(true);
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				});
+				botonConvertirPremium.setBackground(new Color(0, 0, 0));
+				botonConvertirPremium.setForeground(new Color(255, 255, 255));
+				botonConvertirPremium.setFont(new Font("Tahoma", Font.PLAIN, 14));
+				panelBotonesArriba.add(botonConvertirPremium);
+			}
 		}
 		
 		JButton botonLogout = new JButton("Logout");
@@ -1356,6 +1374,24 @@ public class NewVentanaPrincipal extends JFrame {
 		gbc_scrollPaneTablaPlaylist.gridy = 1;
 		panelCancionesLista.add(scrollPaneTablaPlaylist, gbc_scrollPaneTablaPlaylist);
 		
+		panelMasReproducidas = new JPanel();
+		panelMasReproducidas.setBorder(new TitledBorder(null, "M\u00E1s Reproducidas", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+		panelCardGeneral.add(panelMasReproducidas, "name_309655170347000");
+		GridBagLayout gbl_panelMasReproducidas = new GridBagLayout();
+		gbl_panelMasReproducidas.columnWidths = new int[]{0, 0};
+		gbl_panelMasReproducidas.rowHeights = new int[]{0, 0, 0};
+		gbl_panelMasReproducidas.columnWeights = new double[]{1.0, Double.MIN_VALUE};
+		gbl_panelMasReproducidas.rowWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+		panelMasReproducidas.setLayout(gbl_panelMasReproducidas);
+		
+		JScrollPane scrollPaneMasReproducidas = new JScrollPane(tablaMasReproducidas);
+		GridBagConstraints gbc_scrollPaneMasReproducidas = new GridBagConstraints();
+		gbc_scrollPaneMasReproducidas.insets = new Insets(0, 0, 5, 0);
+		gbc_scrollPaneMasReproducidas.fill = GridBagConstraints.BOTH;
+		gbc_scrollPaneMasReproducidas.gridx = 0;
+		gbc_scrollPaneMasReproducidas.gridy = 0;
+		panelMasReproducidas.add(scrollPaneMasReproducidas, gbc_scrollPaneMasReproducidas);
+		
 //		botonRecientes_1.addActionListener(e -> {
 //			TableModel modelo = controlador.tablaRecientes();
 //			tablaPlaylists.setModel(modelo);
@@ -1375,9 +1411,26 @@ public class NewVentanaPrincipal extends JFrame {
 		panelReproduccion.add(panelSliderRepro);
 		
 		JSlider slider = new JSlider();
+		slider.setValue(0);
+		slider.setMaximum(1000);
 		slider.setPreferredSize(new Dimension(500, 22));
 		slider.setForeground(new Color(0, 255, 0));
 		panelSliderRepro.add(slider);
+		ComponenteObservador sliderObservador = new ComponenteObservador(slider) {
+			
+			@Override
+			public void update(Observable o, Object arg) {
+				if(arg == null)
+					return;
+				if(!(arg instanceof Integer))
+					return;
+				
+				Integer argumento = (Integer)arg;
+				JSlider slider = (JSlider)getComponente();
+				slider.setValue(argumento);
+			}
+		};
+		Reproductor.getUnicaInstancia().addObserver(sliderObservador);
 		
 		JPanel panelBotonesRepro = new JPanel();
 		panelReproduccion.add(panelBotonesRepro);
@@ -1449,10 +1502,15 @@ public class NewVentanaPrincipal extends JFrame {
 			else if(panelCentralMostrado == panelCancionesLista) 
 			{
 				tabla = tablaPlaylists;
+			}else if(panelCentralMostrado == panelMasReproducidas)
+			{
+				tabla = tablaMasReproducidas;
 			}
 			
 			if(tabla != null)
+			{
 				mandarAReproducir(tabla);
+			}
 			else
 				controlador.reanudarCancion();
 		});
@@ -1489,7 +1547,7 @@ public class NewVentanaPrincipal extends JFrame {
 			panelBuscar.setVisible(true);
 			panelCentralMostrado = panelBuscar;
 			panelReproduccion.setVisible(true);
-			mostrandoPanelReproduccion = true;
+//			mostrandoPanelReproduccion = true;
 		});
 		botonPanelBuscar.setContentAreaFilled(false);
 		botonPanelBuscar.setBorder(null);

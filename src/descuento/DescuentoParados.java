@@ -2,7 +2,7 @@ package descuento;
 
 public class DescuentoParados extends Descuento {
 	
-	private static final int PORCENTAJE_PARADOS = 35;
+	private static final float PORCENTAJE_PARADOS = (float) 35.0;
 	
 	public DescuentoParados()
 	{
@@ -11,6 +11,6 @@ public class DescuentoParados extends Descuento {
 	
 	@Override
 	public float aplicarDescuento(float precio) {
-		return precio * (1 - PORCENTAJE_PARADOS / 100);
+		return precio * (1 - (float)(PORCENTAJE_PARADOS / 100.0));
 	}
 }
