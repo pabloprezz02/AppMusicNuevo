@@ -78,6 +78,17 @@ public class NewVentanaLogin {
 //		controlador.addObserver(ventanaUsuarios);
 		initialize();
 	}
+	
+	private void liberarRecursos()
+	{
+		if(ventanaUsuarios != null)
+		{
+			ventanaUsuarios.getFrame().dispose();					
+		}
+		controlador.deleteObserver(ventanaUsuarios);
+		ventanaUsuarios = null;
+		this.frame.dispose();
+	}
 
 	/**
 	 * Initialize the contents of the frame.
@@ -239,10 +250,8 @@ public class NewVentanaLogin {
 			String mensaje = controlador.login(usuario, contrasena);
 			if(mensaje == null) {
 //				VentanaPrincipal main = new VentanaPrincipal(usuario);
-				frame.setVisible(false);
-				if(ventanaUsuarios != null)
-					ventanaUsuarios.setVisible(false);
-				controlador.deleteObserver(ventanaUsuarios);
+//				frame.setVisible(false);
+				liberarRecursos();
 			}else {
 				labelMensajes.setText(mensaje);
 				labelMensajes.setVisible(true);
@@ -281,10 +290,11 @@ public class NewVentanaLogin {
 							JOptionPane.INFORMATION_MESSAGE);
 					controlador.loguearConGitHub(textFieldUsrLogin.getText(), new String(passwordFieldLogin.getPassword()));
 //					NewVentanaPrincipal main=new NewVentanaPrincipal(textFieldUsrLogin.getText(), true);
-					frame.setVisible(false);
-					if(ventanaUsuarios != null)
-						ventanaUsuarios.setVisible(false);
-					controlador.deleteObserver(ventanaUsuarios);
+//					frame.setVisible(false);
+//					if(ventanaUsuarios != null)
+//						ventanaUsuarios.setVisible(false);
+//					controlador.deleteObserver(ventanaUsuarios);
+					liberarRecursos();
 				} else {
 					JOptionPane.showMessageDialog(frame, "Login Fallido", "Login", JOptionPane.WARNING_MESSAGE);
 				}
@@ -461,15 +471,20 @@ public class NewVentanaLogin {
 		botonVerUsuarios.addActionListener(e -> {
 //			controlador.mostrarUsuarios();
 //			ventanaUsuarios.mostrarVentana();
-			List<String> usuarios = controlador.getNombresUsuarios();
-			VentanaUsuarios ventana = new VentanaUsuarios(usuarios);
-			controlador.addObserver(ventana);
-			ventana.getFrame().addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosed(WindowEvent e) {
-					controlador.deleteObserver(ventana);
-				}
-			});
+			if(ventanaUsuarios == null)
+			{
+				List<String> usuarios = controlador.getNombresUsuarios();
+				ventanaUsuarios = new VentanaUsuarios(usuarios);
+				controlador.addObserver(ventanaUsuarios);
+				ventanaUsuarios.getFrame().addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosing(WindowEvent e) {
+						ventanaUsuarios.getFrame().dispose();
+						controlador.deleteObserver(ventanaUsuarios);
+						ventanaUsuarios = null;
+					}
+				});
+			}
 		});
 		botonVerUsuarios.setForeground(new Color(0, 255, 64));
 		botonVerUsuarios.setFont(new Font("Verdana", Font.BOLD, 10));

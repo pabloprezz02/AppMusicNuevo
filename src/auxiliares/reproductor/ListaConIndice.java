@@ -30,50 +30,22 @@ public class ListaConIndice <E> {
 	}
 	
 	// Método que devuelve el índice.
-	public int getIndice()
+	public synchronized int getIndice()
 	{
 		return indice;
 	}
 	
-	// Método setIndice.
-	public void setIndice(int indice)
-	{
-		int tamanoLista = lista.size();
-		if(indice < 0 || indice > getTamano() - 1)
-			return;
-		this.indice = indice;
-	}
-	
-	// Añadir elemento. Se actualiza el índice.
-	public void addElemento(E elemento)
-	{
-		lista.add(elemento);
-		indice = lista.size() - 1;	// Se sitúa el índice en la última Canción.
-	}
-	
-	// Eliminar primer elemento.
-	public void eliminarPrimero()
-	{
-		lista.remove(0);
-		indice--;
-	}
-	
 	// Método para tomar el siguiente elemento.
-	public E getSiguienteElemento()
+	public synchronized E getSiguienteElemento()
 	{
 		// Solo actualiza y devuelve elemento si puede.
 		E elemento = lista.get((indice + 1) % lista.size());
-		indice++;
+		indice = (indice + 1) % lista.size();
 		return elemento;
-//		if(lista.size() > indice)
-//		{
-//			
-//		}
-//		return null;
 	}
 	
 	// Método para tomar el elemento anterior.
-	public E getElementoAnterior() 
+	public synchronized E getElementoAnterior() 
 	{
 		if(indice == 0)
 		{
@@ -83,28 +55,10 @@ public class ListaConIndice <E> {
 		E elemento = lista.get(indice - 1);
 		indice--;
 		return elemento;
-//		// Solo actualiza y devuelve elemento si puede.
-//		if(0 < indice && lista.size() > 0)
-//		{
-//			E elemento = lista.get(indice - 1);
-//			indice--;
-//			return elemento;
-//		}
-//		return null;
-	}
-	
-	// Método para tomar un elemento dado el índice.
-	public E getElemento(int indice)
-	{
-		if(indice < 0 || indice > lista.size())
-			return null;
-		E elemento = lista.get(indice);
-		setIndice(indice);
-		return elemento;
 	}
 	
 	// Método para tomar el elemento actual.
-	public E getActual() 
+	public synchronized E getActual() 
 	{
 		if(lista.size() > 0)
 		{
@@ -114,7 +68,7 @@ public class ListaConIndice <E> {
 	}
 	
 	// Método para ir al primer elemento.
-	public E getPrimero()
+	public synchronized E getPrimero()
 	{
 		if(lista.size() > 0)
 		{
@@ -126,7 +80,7 @@ public class ListaConIndice <E> {
 	}
 	
 	// Método para ir al último elemento.
-	public E getUltimo()
+	public synchronized E getUltimo()
 	{
 		if(lista.size() > 0)
 		{

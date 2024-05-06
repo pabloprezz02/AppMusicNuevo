@@ -50,14 +50,18 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,7 +105,7 @@ public class NewVentanaPrincipal extends JFrame {
 	private static int COLUMNA_ESTILO = 2;
 	private static int COLUMNA_SELECCIONADA = 3;
 	private static int NUM_COLUMNAS = 4;
-	private static int NUM_FILAS_MAS_REPRODUCIDAS = 10;
+	private static int NUM_FILAS_MAS_REPRODUCIDAS = 20;
 	public static String[] NOMBRES_COLUMNAS = {"Título", "Intérprete", "Estilo", ""};
 	public static String[] NOMBRES_COLUMNAS_MAS_REPRODUCIDAS = {"Título", "Intérprete", "Estilo", "Reproducciones"};
 	
@@ -138,6 +142,8 @@ public class NewVentanaPrincipal extends JFrame {
 	private JTextField textFieldTituloPlaylist;
 	private boolean ponerReproducidasYPDF;
 	
+	private Map<Observable, Observer> observadores;
+	
 	
 	public NewVentanaPrincipal(String nombreUsuario, boolean ponerReproducidasYPDF) {
 		controlador = Controlador.getUnicaInstancia();
@@ -150,6 +156,7 @@ public class NewVentanaPrincipal extends JFrame {
 		cancionesBuscadas = new LinkedList<Cancion>();
 		cancionesSeleccionadas = new ArrayList<Cancion>();
 		this.ponerReproducidasYPDF = ponerReproducidasYPDF;
+		observadores = new HashMap<Observable, Observer>();
 		initialize();
 	}
 	
@@ -345,6 +352,15 @@ public class NewVentanaPrincipal extends JFrame {
 		frmAppmusic.setBounds(100, 100, 1357, 788);
 		frmAppmusic.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmAppmusic.getContentPane().setLayout(new BorderLayout(0, 0));
+		
+		frmAppmusic.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				frmAppmusic.dispose();
+				observadores.keySet().stream()
+					.forEach(observable -> observable.deleteObserver(observadores.get(observable)));
+			}
+		});
 		
 		panelVacioCardGeneral = new JPanel();
 		panelVacioCardGeneral.setAlignmentY(Component.TOP_ALIGNMENT);
@@ -567,6 +583,7 @@ public class NewVentanaPrincipal extends JFrame {
 			}
 		};
 		controlador.addObserver(tablaObservadora);
+		observadores.put(controlador, tablaObservadora);
 		
 		JButton botonMasReproducidas = new JButton("Más Reproducidas");
 		botonMasReproducidas.addActionListener(e ->
@@ -663,6 +680,7 @@ public class NewVentanaPrincipal extends JFrame {
 //		ListObserver listaConLasPlaylists = new ListObserver(listaPlaylists, "Listas");
 		ObservadorListasUsuario listaConLasPlaylists = new ObservadorListasUsuario(listaPlaylists, "Listas", nombreUsuario);
 		controlador.addObserver(listaConLasPlaylists);
+		observadores.put(controlador, listaConLasPlaylists);
 		
 		JScrollPane scrollPanePlaylists = new JScrollPane(listaPlaylists);
 		scrollPanePlaylists.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -921,6 +939,7 @@ public class NewVentanaPrincipal extends JFrame {
 		comboBox.setFont(new Font("Tahoma", Font.PLAIN, 12));
 		ComboBoxObserver comboBoxObserver = new ComboBoxObserver(comboBox);
 		controlador.addObserver(comboBoxObserver);
+		observadores.put(controlador, comboBoxObserver);
 		
 		JCheckBox chckbxNewCheckBox = new JCheckBox("Favoritas");
 		chckbxNewCheckBox.setFont(new Font("Tahoma", Font.PLAIN, 14));
@@ -1379,9 +1398,9 @@ public class NewVentanaPrincipal extends JFrame {
 		panelCardGeneral.add(panelMasReproducidas, "name_309655170347000");
 		GridBagLayout gbl_panelMasReproducidas = new GridBagLayout();
 		gbl_panelMasReproducidas.columnWidths = new int[]{0, 0};
-		gbl_panelMasReproducidas.rowHeights = new int[]{0, 0, 0};
+		gbl_panelMasReproducidas.rowHeights = new int[] {0};
 		gbl_panelMasReproducidas.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gbl_panelMasReproducidas.rowWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+		gbl_panelMasReproducidas.rowWeights = new double[]{1.0};
 		panelMasReproducidas.setLayout(gbl_panelMasReproducidas);
 		
 		JScrollPane scrollPaneMasReproducidas = new JScrollPane(tablaMasReproducidas);
@@ -1391,13 +1410,6 @@ public class NewVentanaPrincipal extends JFrame {
 		gbc_scrollPaneMasReproducidas.gridx = 0;
 		gbc_scrollPaneMasReproducidas.gridy = 0;
 		panelMasReproducidas.add(scrollPaneMasReproducidas, gbc_scrollPaneMasReproducidas);
-		
-//		botonRecientes_1.addActionListener(e -> {
-//			TableModel modelo = controlador.tablaRecientes();
-//			tablaPlaylists.setModel(modelo);
-//			panelReproduccion.setVisible(true);
-//			cambiarPanelCardCentro(panelCancionesLista);
-//		});
 		
 		GridBagConstraints gbc_panelReproduccion = new GridBagConstraints();
 		gbc_panelReproduccion.fill = GridBagConstraints.BOTH;
@@ -1430,7 +1442,9 @@ public class NewVentanaPrincipal extends JFrame {
 				slider.setValue(argumento);
 			}
 		};
-		Reproductor.getUnicaInstancia().addObserver(sliderObservador);
+		Reproductor reproductor = Reproductor.getUnicaInstancia(); 
+		reproductor.addObserver(sliderObservador);
+		observadores.put(reproductor, sliderObservador);
 		
 		JPanel panelBotonesRepro = new JPanel();
 		panelReproduccion.add(panelBotonesRepro);

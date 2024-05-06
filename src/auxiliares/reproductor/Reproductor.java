@@ -29,7 +29,7 @@ import persistencia.AdaptadorCancion;
 
 public class Reproductor extends Observable {
 	
-	private static final int MAX_RECIENTES_POR_DEFECTO = 10; 
+	private static final int MAX_RECIENTES_POR_DEFECTO = 20; 
 	
 	// Singleton.
 	private static Reproductor unicaInstancia = null;
@@ -40,6 +40,7 @@ public class Reproductor extends Observable {
 //	private ListaConIndice<Cancion> recientes;
 	private ArrayList<Cancion> recientes;
 	private int maxRecientes;
+	private Timeline timeline;
 	
 	private Controlador controlador;
 	
@@ -64,6 +65,9 @@ public class Reproductor extends Observable {
 	{
 		if(unicaInstancia != null)
 		{
+			if(unicaInstancia.timeline != null)
+				unicaInstancia.timeline.stop();
+			unicaInstancia.timeline = null;
 			unicaInstancia.stopCancion();
 			unicaInstancia.mediaPlayer = null;
 			unicaInstancia = null;
@@ -148,10 +152,12 @@ public class Reproductor extends Observable {
 		            Duration totalDuration = media.getDuration();
 		            
 		            // Crear un Timeline para actualizar el tiempo restante cada segundo
-		            Timeline timeline = new Timeline(
+		            if(timeline != null)
+						 timeline.stop();
+		            timeline = new Timeline(
 		                    new KeyFrame(Duration.seconds(0.1), event -> {
 		                        // Obtener el tiempo actual de reproducción
-		                        Duration currentTime = mediaPlayer.getCurrentTime();
+		                    	Duration currentTime = mediaPlayer.getCurrentTime();
 		                        int porcentaje = (int)(1000 * currentTime.toSeconds() / totalDuration.toSeconds());
 		                        setChanged();
 		                        notifyObservers(porcentaje);
@@ -162,7 +168,7 @@ public class Reproductor extends Observable {
 		            // Iniciar el Timeline
 		            timeline.play();
 		        });
-//			
+	
 //			mediaPlayer.setOnPlaying(new Runnable() {
 //				
 //				@Override
