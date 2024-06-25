@@ -13,6 +13,8 @@ import org.eclipse.persistence.internal.sessions.ExclusiveIsolatedClientSession;
 
 import beans.Entidad;
 import beans.Propiedad;
+import descuento.Descuento;
+import descuento.FactoriaDescuento;
 import modelo.Cancion;
 //import modelo.Descuento;
 //import modelo.DescuentoFijo;
@@ -69,6 +71,16 @@ public class AdaptadorUsuario implements IAdaptadorUsuarioDAO {
 		propiedades.add(new Propiedad("email", usuario.getEmail()));
 		propiedades.add(new Propiedad("recientes", getCodigosRecientes(usuario.getRecientes())));
 //		propiedades.add(new Propiedad("descuento", usuario.getTipoDescuento()));
+		
+		// Registro del descuento --> como, al fin y al cabo, un descuento depende del tipo, se toma el nombre de la clase.
+		if(usuario.getDescuento() == null)
+		{
+			propiedades.add(new Propiedad("descuento", "null"));
+		}
+		else
+		{
+			propiedades.add(new Propiedad("descuento", usuario.getDescuento().getClass().getName()));
+		}
 		eUsuario.setPropiedades(propiedades);
 		
 		// REGISTRAR ENTIDAD USUARIO
@@ -87,7 +99,7 @@ public class AdaptadorUsuario implements IAdaptadorUsuarioDAO {
 		boolean premium;
 		String fechaNacimiento;
 		String email;
-//		Descuento descuento;
+		String descuento;
 		
 		// RECUPERACIÓN DE LA ENTIDAD
 		Entidad eUsuario=servicioPersistencia.recuperarEntidad(codigo);
@@ -98,13 +110,15 @@ public class AdaptadorUsuario implements IAdaptadorUsuarioDAO {
 		email = servicioPersistencia.recuperarPropiedadEntidad(eUsuario, "email");
 		fechaNacimiento=servicioPersistencia.recuperarPropiedadEntidad(eUsuario, "fechaNacimiento");
 		
-		//Comprobar con profesor
-//		String tipoDescuento=servicioPersistencia.recuperarPropiedadEntidad(eUsuario, "descuento");
-//        if(tipoDescuento.equals("DescuentoFijo")) {
-//            descuento=new DescuentoFijo();
-//        }else {
-//            descuento=new DescuentoJovenes();
-//        }
+		// Caso especial.
+		Descuento descuentoTransformado = null;
+		descuento = servicioPersistencia.recuperarPropiedadEntidad(eUsuario, "descuento");
+		if(!descuento.equals("null"))
+		{
+			descuentoTransformado = FactoriaDescuento.getUnicaInstancia()
+					.crearDescuento(descuento);
+		}
+		
 		// PREGUNTAR ESTO
 		if(servicioPersistencia.recuperarPropiedadEntidad(eUsuario, "premium").equals("true")) {
 			premium=true;
@@ -115,6 +129,7 @@ public class AdaptadorUsuario implements IAdaptadorUsuarioDAO {
 		// CREACIÓN DEL OBJETO
 		Usuario usuario=new Usuario(nombre, password.toString(), email, fechaNacimiento);
 		usuario.setPremium(true);
+
 		usuario.setCodigo(codigo);
 //		usuario.setDescuento(descuento);
 		
@@ -180,10 +195,10 @@ public class AdaptadorUsuario implements IAdaptadorUsuarioDAO {
 				propiedad.setValor(usuario.getEmail());
 			}else if(propiedad.getNombre().equals("fechaNacimiento")) {
 				propiedad.setValor(usuario.getFechaNacimiento());
+			}else if(propiedad.getNombre().equals("descuento")) {
+				if(usuario.getDescuento() != null)
+					propiedad.setValor(usuario.getDescuento().getClass().getName());
 			}
-//			}else if(propiedad.getNombre().equals("descuento")) {
-//				propiedad.setValor(usuario.getTipoDescuento());
-//			}
 			servicioPersistencia.modificarPropiedad(propiedad);
 		}
 	}

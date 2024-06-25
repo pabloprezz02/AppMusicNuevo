@@ -1,10 +1,7 @@
 package ventanas;
 
-import java.awt.EventQueue;
-
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import java.awt.BorderLayout;
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
 import java.awt.GridBagConstraints;
@@ -15,6 +12,10 @@ import javax.swing.JDialog;
 
 public class DialogoAceptarRechazar extends JDialog {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private boolean aceptado = false;
 	
 	/**

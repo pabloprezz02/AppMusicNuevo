@@ -7,7 +7,12 @@ public class DescuentoJovenes extends Descuento {
 	
 	public DescuentoJovenes()
 	{
-		super();
+		super(PORCENTAJE_JOVENES);
+	}
+	
+	@Override
+	public float getPorcentaje() {
+		return PORCENTAJE_JOVENES;
 	}
 	
 	@Override

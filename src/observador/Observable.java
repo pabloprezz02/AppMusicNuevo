@@ -2,7 +2,7 @@ package observador;
 
 import java.util.Vector;
 
-public class Observable {
+public abstract class Observable {
 	// BOOLEANO QUE INDICA SI HA CAMBIADO
 	private boolean changed = false;
 	// VECTOR DE OBSERVADORES
@@ -39,9 +39,15 @@ public class Observable {
 		for(int i=0; i<arrayLocal.length; i++) {
 			Observer o = (Observer) arrayLocal[i];
 			o.update(this, arg);
-//			if(comprobar(o))
-//				o.update(this, arg);
 		}
+	}
+	
+//	public abstract void notifyObservers(Object arg);
+	
+	// GET CHANGED
+	public boolean getChanged()
+	{
+		return changed;
 	}
 	
 	// PONER CHANGED A TRUE

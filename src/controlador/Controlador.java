@@ -34,6 +34,7 @@ import modelo.Playlist;
 import modelo.Usuario;
 import observador.Observable;
 import observador.Observer;
+import observador.tiposObservadores.ObservadorReproduccion;
 import persistencia.DAOException;
 import persistencia.FactoriaDAO;
 import persistencia.IAdaptadorCancion;
@@ -45,7 +46,7 @@ import umu.tds.componente.CancionesListener;
 import umu.tds.componente.CargadorCanciones;
 import ventanas.NewVentanaPrincipal;
 
-public class Controlador extends Observable implements CancionesListener, Observer {
+public class Controlador extends Observable implements CancionesListener, Observer, ObservadorReproduccion {
 	
 		// Precio de hacerse premium.
 		private static final int PRECIO_APPMUSIC = 5;
@@ -64,7 +65,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		// CATÁLOGOS
 		private CatalogoUsuarios catalogoUsuarios = null;
 		private CatalogoCanciones catalogoCanciones = null;
-//		private CatalogoPlaylists catalogoPlaylists = null;
 				
 		// VARIABLES GLOBALES (PRIVADAS AL CONTROLADOR)
 		private final static String NOMBRE_VACIO = "Tienes que introducir un nombre.";
@@ -80,29 +80,25 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		// ATRIBUTOS PARA LOS FILTROS.
 		private Map<String, List<Cancion>> cancionesPorArtista;
 		private Map<String, List<Cancion>> cancionesPorEstilo;
-		private Map<String, List<Cancion>> cancionesPorTitulo;
-//		private List<Cancion> favoritas;
-		
-		
-		// CLASES DAO
-		// ...
-		// REFERENCIAS A DRIVERS
-		// ...
+		private Map<String, List<Cancion>> cancionesPorTitulo;		
 		
 		// REPRODUCTOR Y CANCIÓN ACTUAL
 		private Reproductor reproductor;
+		private Usuario usuarioReproduciendo;
 		
-//		// EL USUARIO QUE ESTARÁ USANDO LA APLICACIÓN UNA VEZ HAYA REALIZADO EL LOGIN.
-//		private Usuario usuarioAplicacion = null;
-//		
-//		// PLAYLISTS DEL USUARIO.
-//		private Set<Playlist> listas;
+		// LOS OBSERVADORES DE CADA TIPO QUE VA A HABER.
+		private Map<TipoObservadorControlador, List<Observer>> observadores;
 		
 		private Controlador() {
 			// Inicialización de los filtros.
 			cancionesPorArtista = new HashMap<String, List<Cancion>>();
 			cancionesPorEstilo = new HashMap<String, List<Cancion>>();
 			cancionesPorTitulo = new HashMap<String, List<Cancion>>();
+			
+			// Inicialización de los observadores.
+			observadores = new HashMap<TipoObservadorControlador, List<Observer>>();
+			for(TipoObservadorControlador tipo: TipoObservadorControlador.values())
+				observadores.put(tipo, new LinkedList<Observer>());
 
 			// Inicialización de adaptadores y catálogos.
 			inicializarAdaptadores();
@@ -117,41 +113,10 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			
 			inicializarCatalogos();
 			
-//			for(Usuario u:catalogoUsuarios.getUsuarios()) {
-//				catalogoUsuarios.removeUsuario(u);
-//			}
-//			for(Cancion c:catalogoCanciones.getCanciones())
-//				catalogoCanciones.removeCancion(c);
-			
-			// Inicialización de las cadenas para observadores.
-//			crearCadenaNombresUsuarios();
-//			crearCadenaTitulosCanciones();
-//			crearCadenaEstilos();
-//			crearCadenaPlaylists();
-			
 			// Inicialización del cargador de canciones.
 			cargadorCanciones = new CargadorCanciones();
 			cargadorCanciones.addCancionesListener(this);
-			
-			// Usuario de la aplicación a null.
-//			usuarioAplicacion = null;
-			
-//			ventanaMain = null;
-//			listas = null;
 		}
-		
-//		private void crearNombresListas(Usuario usuarioAplicacion) {
-//			nombresPlaylists = "Listas\n";
-//			
-//			// Si ya hay un usuario usando la aplicación actualizo las listas.
-//			if(usuarioAplicacion != null) {
-//				usuarioAplicacion.getPlaylists().stream()
-//					.forEach(lista -> nombresPlaylists += lista.getNombre());
-//				
-//				listas.stream()
-//					.forEach(l -> nombresPlaylists += (l.getNombre() + "\n"));
-//			}
-//		}
 		
 		/*
 		 * Singleton.
@@ -248,11 +213,6 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			
 			return cancionesPorArtista.get(cancion.getInterpretes().get(0)).stream()
 					.anyMatch(c -> c.equals(cancion));
-//			Set<String>	interpretes = cancionesPorArtista.keySet();
-////			return catalogoCanciones.getCanciones().stream()
-////					.anyMatch(c -> c.equals(cancion));
-//			Collection<Cancion> canciones = buscarCanciones(getCadenaInterpretes(cancion.getInterpretes()), cancion.getTitulo(), cancion.getEstilo());
-//			return  canciones != null && !canciones.isEmpty();			
 		}
 		
 		/*
@@ -369,6 +329,51 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		 * Métodos para notificar a los observadores de los cambios:
 		 */
 		
+		/**
+		 * Nuevo método para notificar a los observadores. Dependiendo del tipo, se notificará a unos o a otros.
+		 * @param tipo: Tipo de Observador.
+		 * @param arg: objeto a notificar.
+		 */
+		public void notifyObservers(TipoObservadorControlador tipo, Object arg) 
+		{
+			Object[] arrayLocal;
+			synchronized(this) {
+				if(!getChanged())
+					return;
+				arrayLocal = observadores.get(tipo).toArray();
+				clearChanged();
+			}
+			
+			for(int i=0; i<arrayLocal.length; i++) {
+				Observer o = (Observer) arrayLocal[i];
+				o.update(this, arg);
+			}
+		}
+		
+		/**
+		 * Método para añadir un Observador de un tipo concreto.
+		 * @param tipo: Tipo del Observador.
+		 * @param observador: el Observador concreto.
+		 */
+		public void addObserver(TipoObservadorControlador tipo, Observer observador)
+		{
+			List<Observer> observadoresTipo = observadores.get(tipo);
+			observadoresTipo.add(observador);
+			observadores.put(tipo, observadoresTipo);
+		}
+		
+		/**
+		 * Método para eliminar un Observador de un tipo concreto.
+		 * @param tipo: Tipo del Observador.
+		 * @param observador: el Observador concreto.
+		 */
+		public void deleteObserver(TipoObservadorControlador tipo, Observer observador)
+		{
+			List<Observer> observadoresTipo = observadores.get(tipo);
+			observadoresTipo.remove(observador);
+			observadores.put(tipo, observadoresTipo);
+		}
+		
 		// Si cambian las canciones.
 		private void notificarCambioCanciones() 
 		{
@@ -376,9 +381,8 @@ public class Controlador extends Observable implements CancionesListener, Observ
 					.map(c -> c.getTitulo() + "~" + Cancion.getCadenaInterpretes(c.getInterpretes()))
 					.collect(Collectors.toList())
 					);
-			canciones.add(0, "Canciones");
 			setChanged();
-			notifyObservers(canciones);
+			notifyObservers(TipoObservadorControlador.CANCION, canciones);
 		}
 		
 		// Si cambian los estilos.
@@ -387,7 +391,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			List<String> estilos = new LinkedList<String>(cancionesPorEstilo.keySet());
 			estilos.add(0, "Todos");
 			setChanged();
-			notifyObservers(estilos);
+			notifyObservers(TipoObservadorControlador.ESTILO, estilos);
 		}
 		
 		// Si cambian los usuarios.
@@ -396,9 +400,8 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			LinkedList<String> usuarios = new LinkedList<String>(catalogoUsuarios.getUsuarios().stream()
 					.map(u -> u.getNombre())
 					.collect(Collectors.toList()));
-			usuarios.add(0, "Usuarios");
 			setChanged();
-			notifyObservers(usuarios);
+			notifyObservers(TipoObservadorControlador.USUARIO, usuarios);
 		}
 		
 		// Si cambian las playlists.
@@ -408,36 +411,17 @@ public class Controlador extends Observable implements CancionesListener, Observ
 					.map(p -> p.getNombre())
 					.collect(Collectors.toList()));
 			
-			usuarioYPlaylists.add(0, "Listas");
 			usuarioYPlaylists.add(0, usuario.getNombre());
 			setChanged();
-			notifyObservers(usuarioYPlaylists);
-//			actualizarFavoritas();
+			notifyObservers(TipoObservadorControlador.PLAYLIST, usuarioYPlaylists);
 		}
 		
 		private void notificarCambioMasReproducidas()
 		{
 			List<Cancion> masReproducidas = getMasReproducidas();
-			List<Object> argumento = new LinkedList<Object>();
-			argumento.add((Object)"MasReproducidas");
-			masReproducidas.stream()
-				.forEach(c -> argumento.add((Object)c));
 			setChanged();
-			notifyObservers(argumento);
+			notifyObservers(TipoObservadorControlador.MAS_REPRODUCIDAS, masReproducidas);
 		}
-		
-//		private void actualizarFavoritas()
-//		{
-//			favoritas = new LinkedList<Cancion>(); 
-//			listas.stream()
-//				.map(lista -> lista.getCanciones())
-//				.flatMap(listaCanciones -> listaCanciones.stream())
-//				.forEach(c -> 
-//				{
-//					if(!favoritas.contains(c))
-//						favoritas.add(c);
-//				});
-//		}
 		
 		/*
 		 *	CUANDO SE HAN AÑADIDO NUEVAS CANCIONES, SE AVISA AL CONTROLADOR MEDIANTE EL USO DE ESTE MÉTODO.
@@ -464,6 +448,20 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			}
 		}
 		
+		@Override
+		public void updateRepro(Observable o, Object arg) 
+		{
+			if(!(arg instanceof Cancion))
+				return;
+			if(o != reproductor)
+				return;
+			
+			Cancion argumento = (Cancion)arg;
+			usuarioReproduciendo.addCancionReciente(argumento);
+			actualizarUsuario(usuarioReproduciendo);
+		}
+		
+		
 		/*
 		 * REGISTRO DE UN USUARIO. DEVOLVERÁ UN STRING REPRESENTANDO MENSAJES O NULL EN CASO DE REGISTRAR EL USUARIO.
 		 */
@@ -474,15 +472,15 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			// ***************** MENSAJES DE ERROR ***************** //
 			
 			// El nombre es vacío --> no válido.
-			if(nombre.equals("") || nombre==null)
+			if(nombre==null || nombre.equals(""))
 				return NOMBRE_VACIO;
 			
 			// La contraseña es vacía --> no válida.
-			if(password.equals("") || password==null)
+			if(password==null || password.equals(""))
 				return CONTRASENA_VACIA;
 			
 			// Email vacío --> no válido.
-			if(email.equals("") || email==null)
+			if(email==null || email.equals(""))
 				return EMAIL_VACIO;
 			
 			// Fecha vacía --> no válida.
@@ -643,8 +641,12 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		private boolean consultarContrasena(String nombre, String password) {
 			Usuario usuario;
 			
-			if((usuario = catalogoUsuarios.getUsuario(nombre)) != null)
-				return usuario.getPassword().equals(password);
+			try {
+				if((usuario = catalogoUsuarios.getUsuario(nombre)) != null)
+					return usuario.getPassword().equals(password);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			
 			return false;
 		}
@@ -804,9 +806,14 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			reproductor.reanudarCancion();
 		}
 		
-		public Collection<Cancion> getRecientes()
+		/**
+		 * Método para conseguir las Canciones recientes de un usuario.
+		 * @param usuario: el Usuario cuyas recientes queremos conocer.
+		 * @return: una colección con las canciones recientes.
+		 */
+		public List<Cancion> getRecientes(Usuario usuario)
 		{
-			return reproductor.getRecientes();
+			return usuario.getRecientes();
 		}
 		
 		/*
@@ -823,14 +830,16 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			reproductor.parar();
 		}
 		
-		public void reproducirRecientesSec()
+		public void reproducirRecientesSec(Usuario usuario)
 		{
-			reproductor.reproducirRecientesSecuencialmente();
+			usuarioReproduciendo = usuario;
+			reproductor.reproducirListaSecuencialmente(getRecientes(usuario));
 		}
 		
-		public void reproducirRecientesAleat()
+		public void reproducirRecientesAleat(Usuario usuario)
 		{
-			reproductor.reproducirRecientesAleatoriamente();
+			usuarioReproduciendo = usuario;
+			reproductor.reproducirListaAleatoriamente(getRecientes(usuario));
 		}
 		
 		/**
@@ -846,7 +855,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 //			}
 			if(playlist == null)
 			{
-				reproducirRecientesSec();
+				reproducirRecientesSec(usuario);
 				return;
 			}
 			Playlist p = null;
@@ -855,20 +864,21 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			reproducirSecuencialmente(p);
+			reproducirSecuencialmente(p, usuario);
 		}
 		
-		public void reproducirSecuencialmente(Playlist playlist)
+		public void reproducirSecuencialmente(Playlist playlist, Usuario usuario)
 		{
 			if(playlist == null)
 				return;
-			reproducirSecuencialmente(playlist.getCanciones());
+			reproducirSecuencialmente(playlist.getCanciones(), usuario);
 		}
 		
-		public void reproducirSecuencialmente(List<Cancion> canciones)
+		public void reproducirSecuencialmente(List<Cancion> canciones, Usuario usuario)
 		{
 			if(canciones == null)
 				return;
+			usuarioReproduciendo = usuario;
 			reproductor.reproducirListaSecuencialmente(canciones);
 		}
 		
@@ -885,7 +895,7 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			
 			if(playlist == null)
 			{
-				reproducirRecientesAleat();
+				reproducirRecientesAleat(usuario);
 				return;
 			}
 			
@@ -895,20 +905,21 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			reproducirAleatoriamente(p);
+			reproducirAleatoriamente(p, usuario);
 		}
 		
-		public void reproducirAleatoriamente(Playlist playlist)
+		public void reproducirAleatoriamente(Playlist playlist, Usuario usuario)
 		{
 			if(playlist == null)
 				return;
-			reproducirAleatoriamente(playlist.getCanciones());
+			reproducirAleatoriamente(playlist.getCanciones(), usuario);
 		}
 		
-		public void reproducirAleatoriamente(List<Cancion> canciones)
+		public void reproducirAleatoriamente(List<Cancion> canciones, Usuario usuario)
 		{
 			if(canciones == null)
 				return;
+			usuarioReproduciendo = usuario;
 			reproductor.reproducirListaAleatoriamente(canciones);
 		}
 		
@@ -1166,12 +1177,18 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			if(!consultarContrasena(nombre, password))
 				return CONTRASENA_INCORRECTA;
 			
-			Usuario usuarioAplicacion = catalogoUsuarios.getUsuario(nombre);
+			Usuario usuarioAplicacion = null;
+			try {
+				usuarioAplicacion = catalogoUsuarios.getUsuario(nombre);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			
 			crearVentanaMain(nombre, usuarioAplicacion.isPremium());
 			
 			// Inicialización del reproductor de canciones.
 			reproductor = Reproductor.getUnicaInstancia();
+			reproductor.addObservadorReproduccion(this);
 			reproductor.addObserver(this);
 			
 			return null;	// Si la ventana recibe null, entonces se loguea.
@@ -1339,6 +1356,11 @@ public class Controlador extends Observable implements CancionesListener, Observ
 			Lanzador.main(null);
 		}
 		
+		public void shutdown()
+		{
+			unicaInstancia = null;
+		}
+		
 		/**
 		 * Método para hacer premium a un Usuario.
 		 * @param usuario: nombre del Usuario a hacer premium.
@@ -1362,16 +1384,19 @@ public class Controlador extends Observable implements CancionesListener, Observ
 		{
 			float precio = PRECIO_APPMUSIC;
 			FactoriaDescuento factoria = FactoriaDescuento.getUnicaInstancia();
+			Descuento descuento = null; 
 			if(isJoven(usuario))
 			{
-				Descuento descuento = factoria.crearDescuento("DescuentoJovenes");
+				descuento = factoria.crearDescuento("descuento.DescuentoJovenes");
 				precio = descuento.aplicarDescuento(precio);
 			}
-			if(parado)
+			else if(parado)
 			{
-				Descuento descuento = factoria.crearDescuento("DescuentoParados");
+				descuento = factoria.crearDescuento("descuento.DescuentoParados");
 				precio = descuento.aplicarDescuento(precio);
 			}
+			usuario.setDescuento(descuento);
+			adaptadorUsuario.modificarUsuario(usuario);
 			return precio;
 		}
 		
@@ -1457,5 +1482,15 @@ public class Controlador extends Observable implements CancionesListener, Observ
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
+		
+		/**
+		 * Método para actualizar un Usuario.
+		 * @param usuario: el Usuario a actualizar.
+		 */
+		public void actualizarUsuario(Usuario usuario)
+		{
+			adaptadorUsuario.modificarUsuario(usuario);
+			catalogoUsuarios.reemplazarUsuarios(adaptadorUsuario.recuperarTodosUsuarios());
 		}
 }

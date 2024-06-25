@@ -1,4 +1,4 @@
-package auxiliares;
+package observador.componenteObservador;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -42,19 +42,6 @@ public class ComboBoxObserver extends ComponenteObservador {
 		if(argumento.size() < 1)
 			return;
 		
-		if(argumento.get(0).equals("Todos"))
-		{
-			actualizarContenido(argumento);
-		}
-//		if(arg == null || !(arg instanceof String))
-//			return;
-//		
-//		if(!((String)arg).contains("\n"))
-//			return;
-//		
-//		String[] elementos = ((String)arg).split("\n");
-//		if(elementos[0].equals("Todos")) {			
-//			((JComboBox<String>)getComponente()).setModel(new DefaultComboBoxModel(elementos));
-//		}
+		actualizarContenido(argumento);
 	}
 }

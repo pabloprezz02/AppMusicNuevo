@@ -1,6 +1,7 @@
 package modelo;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -8,7 +9,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import descuento.Descuento;
+
 public class Usuario {
+	
+	// El número máximo de canciones recientes que puede tener el Usuario. 100 para no sobrecargar mucho.
+	private static final int MAX_RECIENTES = 100;
+	// El índice para la canción reciente.
+	private int indice;
+	
 	// ATRIBUTOS PRIMITIVOS
 	private String password;
 	private String nombre;
@@ -18,9 +27,9 @@ public class Usuario {
 	private String fechaNacimiento;
 	
 	// ATRIBUTOS QUE CONTIENEN CLASES
-//	private String fechaNacimiento;
+	private Descuento descuento;
 	private Set<Playlist> playlists;
-	private List<Cancion> recientes;
+	private LinkedList<Cancion> recientes;
 	
 	// CONSTRUCTORES
 	public Usuario(String nombre, String password, String email, String fechaNacimiento) {
@@ -31,8 +40,9 @@ public class Usuario {
 		premium=false;
 		codigo=0;
 		playlists=new HashSet<>();
-		recientes=new LinkedList<>();
-		//descuento=null;
+		recientes=new LinkedList<Cancion>();
+		indice = 0;
+		descuento=null;
 	}
 	
 //	public Usuario(String nombre, String password, Descuento descuento) {
@@ -91,11 +101,34 @@ public class Usuario {
 	}
 	
 	public void addCancionReciente(Cancion cancion) {
+		LinkedList<Cancion> recientesSinCancion = new LinkedList<Cancion>(recientes);
+		recientesSinCancion.remove(cancion);
+		recientes = recientesSinCancion;
+		
+		if(recientes.contains(cancion))
+			return;
+		
+		if(indice == MAX_RECIENTES)
+			indice = 0;
+		
+		if(recientes.size() == MAX_RECIENTES)
+			recientes.remove(indice);
 		recientes.add(cancion);
+		indice++;
 	}
 	
 	public void setPlaylist(Collection<Playlist> playlists) {
 		this.playlists = new HashSet<Playlist>(playlists);
+	}
+	
+	public void setDescuento(Descuento descuento)
+	{
+		this.descuento = descuento;
+	}
+	
+	public Descuento getDescuento()
+	{
+		return descuento;
 	}
 	
 	@Override

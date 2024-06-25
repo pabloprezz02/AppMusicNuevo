@@ -15,11 +15,16 @@ public class FactoriaDescuento {
 	
 	public Descuento crearDescuento(String tipoDescuento)
 	{
-//		return Class<?>.forName(tipoDescuento).getDeclaredConstructor().newInstance();
-		if(tipoDescuento.equals("DescuentoJovenes"))
-			return new DescuentoJovenes();
-		if(tipoDescuento.equals("DescuentoParados"))
-			return new DescuentoParados();
+		try {
+			return (Descuento) Class.forName(tipoDescuento).newInstance();
+		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return null;
+//		if(tipoDescuento.equals("DescuentoJovenes"))
+//			return new DescuentoJovenes();
+//		if(tipoDescuento.equals("DescuentoParados"))
+//			return new DescuentoParados();
 	}
 }

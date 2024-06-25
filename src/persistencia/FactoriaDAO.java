@@ -1,9 +1,5 @@
 package persistencia;
 
-import org.eclipse.persistence.sdo.helper.ClassBuffer;
-
-import modelo.Playlist;
-
 public abstract class FactoriaDAO {
 	// SINGLETON
 	private static FactoriaDAO unicaInstancia=null;

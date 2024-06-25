@@ -1,62 +1,26 @@
 package ventanas;
 
-import java.awt.EventQueue;
-
-import javax.swing.JFrame;
-import java.awt.Toolkit;
 import java.awt.BorderLayout;
-import javax.swing.JPanel;
-import javax.swing.JButton;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Color;
-import java.awt.Font;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-
-import java.awt.Insets;
-import java.awt.Point;
-
-import javax.swing.ImageIcon;
 import java.awt.CardLayout;
-import javax.swing.border.MatteBorder;
-import javax.swing.JScrollPane;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.border.LineBorder;
-import pulsador.Luz;
-
-import javax.swing.AbstractListModel;
-import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListModel;
-import javax.swing.JToggleButton;
-import javax.swing.border.CompoundBorder;
-import java.awt.ComponentOrientation;
-import java.awt.Rectangle;
-import javax.swing.JSlider;
-import javax.swing.border.EmptyBorder;
-import java.awt.Frame;
-import java.awt.Window.Type;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -65,45 +29,58 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.swing.JTable;
-import javax.swing.JFormattedTextField;
-import javax.swing.JTextField;
+import javax.swing.AbstractListModel;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
-import javax.swing.border.BevelBorder;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.border.TitledBorder;
-import javax.swing.filechooser.FileFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
-import com.fasterxml.jackson.databind.ser.std.StdKeySerializers.Default;
-
-import auxiliares.ComboBoxObserver;
-import auxiliares.ComponenteObservador;
-import auxiliares.ListObserver;
-import auxiliares.ObservadorListasUsuario;
 import auxiliares.reproductor.Reproductor;
 import controlador.Controlador;
+import controlador.TipoObservadorControlador;
 import modelo.Cancion;
 import modelo.Playlist;
 import modelo.Usuario;
 import observador.Observable;
 import observador.Observer;
-
-import java.awt.GridLayout;
-import java.awt.FlowLayout;
-import javax.swing.JCheckBox;
-import javax.swing.border.EtchedBorder;
-import javax.swing.ListSelectionModel;
+import observador.componenteObservador.ComboBoxObserver;
+import observador.componenteObservador.ComponenteObservador;
+import observador.componenteObservador.ObservadorListasUsuario;
+import pulsador.Luz;
 
 public class NewVentanaPrincipal extends JFrame {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	
 	// CONSTANTES
-	private static int COLUMNA_TITULO = 0;
-	private static int COLUMNA_INTERPRETE = 1;
-	private static int COLUMNA_ESTILO = 2;
-	private static int COLUMNA_SELECCIONADA = 3;
 	private static int NUM_COLUMNAS = 4;
 	private static int NUM_FILAS_MAS_REPRODUCIDAS = 20;
 	public static String[] NOMBRES_COLUMNAS = {"Título", "Intérprete", "Estilo", ""};
@@ -128,35 +105,28 @@ public class NewVentanaPrincipal extends JFrame {
 	private JTable tablaMasReproducidas;
 
 	// PROPIEDADES PARA LAS LISTAS.
-	private Set<String> elementosLista;
-	private JList listaPlaylists;
+	private JList<String> listaPlaylists;
 	private boolean mostrandoPlaylists = false;
 	TableModel modeloAnteriorGestion = null;
 	
 	private JPanel panelCentralMostrado;
 	
-	// CANCIONES DEVUELTAS EN LA BÚSQUEDA ACTUAL
-	private List<Cancion> cancionesBuscadas;
 	// CANCIONES SELECCIONADAS EN LA BÚSQUEDA ACTUAL
-	private List<Cancion> cancionesSeleccionadas;
 	private JTextField textFieldTituloPlaylist;
-	private boolean ponerReproducidasYPDF;
 	
-	private Map<Observable, Observer> observadores;
+	// Observadores de la ventana principal.
+//	private Map<Observable, Observer> observadores;
 	
 	
 	public NewVentanaPrincipal(String nombreUsuario, boolean ponerReproducidasYPDF) {
 		controlador = Controlador.getUnicaInstancia();
 		this.nombreUsuario = nombreUsuario;
 		this.usuario = controlador.getUsuario(nombreUsuario);
-		elementosLista = new HashSet<String>();
 		listaPlaylists = new JList<>();
 		listaPlaylists.setOpaque(false);
 		listaPlaylists.setFont(new Font("Verdana", Font.PLAIN, 10));
-		cancionesBuscadas = new LinkedList<Cancion>();
-		cancionesSeleccionadas = new ArrayList<Cancion>();
-		this.ponerReproducidasYPDF = ponerReproducidasYPDF;
-		observadores = new HashMap<Observable, Observer>();
+		new LinkedList<Cancion>();
+//		observadores = new HashMap<Observable, Observer>();
 		initialize();
 	}
 	
@@ -326,7 +296,7 @@ public class NewVentanaPrincipal extends JFrame {
 				canciones.add(controlador.getCancion(titulo, interprete));
 			}
 //			controlador.reproducirCancion(titulo, interprete, estilo);
-			controlador.reproducirSecuencialmente(canciones);
+			controlador.reproducirSecuencialmente(canciones, usuario);
 		}
 		else
 		{
@@ -357,8 +327,8 @@ public class NewVentanaPrincipal extends JFrame {
 			@Override
 			public void windowClosing(WindowEvent e) {
 				frmAppmusic.dispose();
-				observadores.keySet().stream()
-					.forEach(observable -> observable.deleteObserver(observadores.get(observable)));
+//				observadores.keySet().stream()
+//					.forEach(observable -> observable.deleteObserver(observadores.get(observable)));
 			}
 		});
 		
@@ -553,8 +523,8 @@ public class NewVentanaPrincipal extends JFrame {
 		tablaMasReproducidas.setRequestFocusEnabled(false);
 		tablaMasReproducidas.setSelectionBackground(new Color(0, 172, 0));
 		
-		ComponenteObservador tablaObservadora = new ComponenteObservador(tablaMasReproducidas) {
-			
+		ComponenteObservador tablaObservadora = new ComponenteObservador(tablaMasReproducidas)
+		{	
 			@Override
 			public void update(Observable o, Object arg) {
 				if(arg == null || !(arg instanceof List))
@@ -562,28 +532,19 @@ public class NewVentanaPrincipal extends JFrame {
 				
 				List<Object> argumento = new LinkedList<Object>((List<Object>) arg);
 				
-				if(!(argumento.get(0) instanceof String))
+				if(argumento.stream()
+						.anyMatch(elemento -> !(elemento instanceof Cancion)))
 					return;
 				
-				if(((String)argumento.get(0)).equals("MasReproducidas"))
-				{
-					argumento.remove(0);
-					if(argumento.stream()
-							.anyMatch(elemento -> !(elemento instanceof Cancion)))
-						return;
-					
-					List<Cancion> canciones = argumento.stream()
-							.map(elemento -> (Cancion)elemento)
-							.collect(Collectors.toList());
-					JTable componente = (JTable)this.getComponente();
-					componente.setModel(crearModeloMasReproducidas(canciones));
-					componente.setVisible(false);
-					componente.setVisible(true);
-				}				
+				List<Cancion> canciones = argumento.stream()
+						.map(elemento -> (Cancion)elemento)
+						.collect(Collectors.toList());
+				JTable componente = (JTable)this.getComponente();
+				componente.setModel(crearModeloMasReproducidas(canciones));
 			}
 		};
-		controlador.addObserver(tablaObservadora);
-		observadores.put(controlador, tablaObservadora);
+		controlador.addObserver(TipoObservadorControlador.MAS_REPRODUCIDAS, tablaObservadora);
+//		observadores.put(controlador, tablaObservadora);
 		
 		JButton botonMasReproducidas = new JButton("Más Reproducidas");
 		botonMasReproducidas.addActionListener(e ->
@@ -678,9 +639,9 @@ public class NewVentanaPrincipal extends JFrame {
 		listaPlaylists.setFont(new Font("Tahoma", Font.PLAIN, 14));
 //		listaPlaylists.setModel(modeloLista);
 //		ListObserver listaConLasPlaylists = new ListObserver(listaPlaylists, "Listas");
-		ObservadorListasUsuario listaConLasPlaylists = new ObservadorListasUsuario(listaPlaylists, "Listas", nombreUsuario);
-		controlador.addObserver(listaConLasPlaylists);
-		observadores.put(controlador, listaConLasPlaylists);
+		ObservadorListasUsuario listaConLasPlaylists = new ObservadorListasUsuario(listaPlaylists, nombreUsuario);
+		controlador.addObserver(TipoObservadorControlador.PLAYLIST, listaConLasPlaylists);
+//		observadores.put(controlador, listaConLasPlaylists);
 		
 		JScrollPane scrollPanePlaylists = new JScrollPane(listaPlaylists);
 		scrollPanePlaylists.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -938,8 +899,8 @@ public class NewVentanaPrincipal extends JFrame {
 		comboBox.setForeground(new Color(0, 0, 0));
 		comboBox.setFont(new Font("Tahoma", Font.PLAIN, 12));
 		ComboBoxObserver comboBoxObserver = new ComboBoxObserver(comboBox);
-		controlador.addObserver(comboBoxObserver);
-		observadores.put(controlador, comboBoxObserver);
+		controlador.addObserver(TipoObservadorControlador.ESTILO, comboBoxObserver);
+//		observadores.put(controlador, comboBoxObserver);
 		
 		JCheckBox chckbxNewCheckBox = new JCheckBox("Favoritas");
 		chckbxNewCheckBox.setFont(new Font("Tahoma", Font.PLAIN, 14));
@@ -1444,7 +1405,7 @@ public class NewVentanaPrincipal extends JFrame {
 		};
 		Reproductor reproductor = Reproductor.getUnicaInstancia(); 
 		reproductor.addObserver(sliderObservador);
-		observadores.put(reproductor, sliderObservador);
+//		observadores.put(reproductor, sliderObservador);
 		
 		JPanel panelBotonesRepro = new JPanel();
 		panelReproduccion.add(panelBotonesRepro);
@@ -1582,7 +1543,7 @@ public class NewVentanaPrincipal extends JFrame {
 		botonRecientes_1.addActionListener(e -> 
 		{
 			listaPlaylists.clearSelection();
-			Collection<Cancion> canciones = controlador.getRecientes();
+			Collection<Cancion> canciones = controlador.getRecientes(usuario);
 			tablaPlaylists.setModel(crearModelo(canciones));
 			cambiarPanelCardCentro(panelCancionesLista);
 			panelReproduccion.setVisible(true);

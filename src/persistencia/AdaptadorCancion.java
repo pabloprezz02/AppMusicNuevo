@@ -7,7 +7,6 @@ import java.util.List;
 import beans.Entidad;
 import beans.Propiedad;
 import modelo.Cancion;
-import modelo.EstiloMusical;
 import tds.driver.FactoriaServicioPersistencia;
 import tds.driver.ServicioPersistencia;
 

@@ -5,27 +5,24 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import persistencia.FactoriaDAO;
-import persistencia.IAdaptadorCancion;
-
 public class CatalogoCanciones {
 	// ATRIBUTOS
 	private Map<Integer, Cancion> canciones;
-	private FactoriaDAO dao;
-	private IAdaptadorCancion adaptadorCancion;
+//	private FactoriaDAO dao;
+//	private IAdaptadorCancion adaptadorCancion;
 	
 	// SINGLETON
 	private static CatalogoCanciones unicaInstancia=null;
 	
 	// CONSTRUCTOR
 	private CatalogoCanciones() {
-		try {
-			dao=FactoriaDAO.getUnicaInstancia();
-			adaptadorCancion=dao.getAdaptadorCancion();
-			canciones=new HashMap<>();
-		}catch (Exception e) {
-			e.printStackTrace();
-		}
+//		try {
+//			dao=FactoriaDAO.getUnicaInstancia();
+//			adaptadorCancion=dao.getAdaptadorCancion();
+		canciones=new HashMap<>();
+//		}catch (Exception e) {
+//			e.printStackTrace();
+//		}
 	}
 	
 	// MÉTODO GET ÚNICA INSTANCIA (SINGLETON)

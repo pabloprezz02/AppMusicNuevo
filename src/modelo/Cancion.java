@@ -3,8 +3,6 @@ package modelo;
 import java.util.LinkedList;
 import java.util.List;
 
-import observador.Observable;
-
 public class Cancion {
 	// ATRIBUTOS PRIMITIVOS
 	private String titulo;

@@ -6,7 +6,7 @@ public class DescuentoParados extends Descuento {
 	
 	public DescuentoParados()
 	{
-		super();
+		super(PORCENTAJE_PARADOS);
 	}
 	
 	@Override

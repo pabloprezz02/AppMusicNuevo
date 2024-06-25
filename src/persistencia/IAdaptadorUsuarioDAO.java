@@ -4,7 +4,7 @@ import java.util.List;
 
 import modelo.Usuario;
 
-public interface IAdaptadorUsuarioDAO {
+public interface IAdaptadorUsuarioDAO extends Adaptador {
 	public void registrarUsuario(Usuario usuario);
 	public void modificarUsuario(Usuario usuario);
 	// BORRAR

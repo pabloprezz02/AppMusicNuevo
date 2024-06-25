@@ -29,6 +29,7 @@ import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.BevelBorder;
 
 import controlador.Controlador;
+import controlador.TipoObservadorControlador;
 
 import java.awt.Dimension;
 import javax.swing.JPasswordField;
@@ -68,14 +69,6 @@ public class NewVentanaLogin {
 	 */
 	public NewVentanaLogin() {
 		controlador = Controlador.getUnicaInstancia();
-//		ventanaUsuarios = new VentanaUsuarios(controlador.mostrarUsuarios());
-//		ventanaUsuarios.getFrame().addWindowListener(new WindowAdapter() {
-//			@Override
-//			public void windowClosed(WindowEvent e) {
-//				controlador.
-//			}
-//		});
-//		controlador.addObserver(ventanaUsuarios);
 		initialize();
 	}
 	
@@ -85,7 +78,7 @@ public class NewVentanaLogin {
 		{
 			ventanaUsuarios.getFrame().dispose();					
 		}
-		controlador.deleteObserver(ventanaUsuarios);
+		controlador.deleteObserver(TipoObservadorControlador.USUARIO, ventanaUsuarios);
 		ventanaUsuarios = null;
 		this.frame.dispose();
 	}
@@ -94,13 +87,6 @@ public class NewVentanaLogin {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-//		try {
-//			UIManager.setLookAndFeel("com.formdev.flatlaf.themes.FlatMacDarkLaf");
-//		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-//				| UnsupportedLookAndFeelException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
 		frame = new JFrame();
 		frame.setResizable(false);
 		frame.setMinimumSize(new Dimension(600, 420));
@@ -288,6 +274,8 @@ public class NewVentanaLogin {
 				if (controlador.verificarGitHub(textFieldUsrLogin.getText(), selectedFile.getAbsolutePath())) {
 					JOptionPane.showMessageDialog(frame, "Login Correcto", "Login",
 							JOptionPane.INFORMATION_MESSAGE);
+					
+					// Manda al controlador que loguee con GitHub.
 					controlador.loguearConGitHub(textFieldUsrLogin.getText(), new String(passwordFieldLogin.getPassword()));
 //					NewVentanaPrincipal main=new NewVentanaPrincipal(textFieldUsrLogin.getText(), true);
 //					frame.setVisible(false);
@@ -446,7 +434,8 @@ public class NewVentanaLogin {
 		
 		JButton botonRegistrarseRegistro = new JButton("Registro");
 		botonRegistrarseRegistro.setBackground(new Color(0, 0, 0));
-		botonRegistrarseRegistro.addActionListener(e -> {
+		botonRegistrarseRegistro.addActionListener(e -> 
+		{
 			String nombre = textFieldUsuarioRegistro.getText();
 			char[] password = passwordFieldRegistro.getPassword();
 			String email = textFieldEmailRegistro.getText();
@@ -475,12 +464,12 @@ public class NewVentanaLogin {
 			{
 				List<String> usuarios = controlador.getNombresUsuarios();
 				ventanaUsuarios = new VentanaUsuarios(usuarios);
-				controlador.addObserver(ventanaUsuarios);
+				controlador.addObserver(TipoObservadorControlador.USUARIO, ventanaUsuarios);
 				ventanaUsuarios.getFrame().addWindowListener(new WindowAdapter() {
 					@Override
 					public void windowClosing(WindowEvent e) {
 						ventanaUsuarios.getFrame().dispose();
-						controlador.deleteObserver(ventanaUsuarios);
+						controlador.deleteObserver(TipoObservadorControlador.USUARIO, ventanaUsuarios);
 						ventanaUsuarios = null;
 					}
 				});

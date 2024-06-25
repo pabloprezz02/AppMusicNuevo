@@ -4,7 +4,7 @@ import java.util.List;
 
 import modelo.Cancion;
 
-public interface IAdaptadorCancion {
+public interface IAdaptadorCancion extends Adaptador {
 	public void registrarCancion(Cancion cancion);
 	public void modificarCancion(Cancion cancion);
 	// BORRAR

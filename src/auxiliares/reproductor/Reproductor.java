@@ -8,24 +8,20 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-import controlador.Controlador;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import javafx.scene.media.MediaPlayer.Status;
 import javafx.util.Duration;
 import modelo.Cancion;
 import observador.Observable;
 import observador.Observer;
-import persistencia.AdaptadorCancion;
+import observador.tiposObservadores.ObservadorReproduccion;
 
 public class Reproductor extends Observable {
 	
@@ -37,18 +33,12 @@ public class Reproductor extends Observable {
 	// Atributos.
 	private String tempPath = System.getProperty("user.dir") + "/temp";
 	private MediaPlayer mediaPlayer = null;
-//	private ListaConIndice<Cancion> recientes;
-	private ArrayList<Cancion> recientes;
-	private int maxRecientes;
 	private Timeline timeline;
 	
-	private Controlador controlador;
+	private ObservadorReproduccion observadorReproduccion;
 	
 	// Esto será lo que se está reproduciendo.
 	private ListaConIndice<Cancion> reproduciendo;
-	
-	// Si este atributo es true, entonces intentará seguir con la siguiente canción.
-	private boolean seguirLista;
 	
 	// Canción actual.
 	private Cancion cancionActual;
@@ -82,17 +72,8 @@ public class Reproductor extends Observable {
 	
 	private Reproductor(int maxRecientes)
 	{
-		try {
-//			recientes = new ListaConIndice<Cancion>(new ArrayList<Cancion>());
-			reproduciendo = null;
-			seguirLista = false;
-			this.maxRecientes = maxRecientes;
-			recientes = new ArrayList<Cancion>();
-			cancionActual = null;
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
+		reproduciendo = null;
+		cancionActual = null;
 	}
 	
 	// Singleton.
@@ -102,18 +83,13 @@ public class Reproductor extends Observable {
 		return unicaInstancia;
 	}
 	
-	public Collection<Cancion> getRecientes()
-	{
-		LinkedList<Cancion> recientes = new LinkedList<Cancion>();
-		for(Cancion cancion: this.recientes)
-			recientes.add(cancion);
-		return recientes;
+	public Cancion getCancionActual() {
+		return cancionActual;
 	}
 	
-	public Cancion getCancionActual() {
-//		return cancionActual;
-//		return recientes.getActual();
-		return cancionActual;
+	public void addObservadorReproduccion(ObservadorReproduccion observadorReproduccion)
+	{
+		this.observadorReproduccion = observadorReproduccion;
 	}
 	
 	/**
@@ -168,28 +144,6 @@ public class Reproductor extends Observable {
 		            // Iniciar el Timeline
 		            timeline.play();
 		        });
-	
-//			mediaPlayer.setOnPlaying(new Runnable() {
-//				
-//				@Override
-//				public void run() {
-//					MediaPlayer.Status estado = mediaPlayer.getStatus();
-//					while(estado == MediaPlayer.Status.PLAYING)
-//					{
-//						int porcentaje = (int) (1000 * (mediaPlayer.getCurrentTime().toSeconds() / mediaPlayer.getTotalDuration().toSeconds()));
-//						
-//						setChanged();
-//						notifyObservers(porcentaje);
-//						try {
-//							Thread.sleep(100);
-//						} catch (InterruptedException e) {
-//							// TODO Auto-generated catch block
-//							e.printStackTrace();
-//						}
-//						estado = mediaPlayer.getStatus();
-//					}
-//				}
-//			});
 			
 			cancion.incrementarNumReproducciones();
 //			controlador.modificarCancion(cancion);
@@ -254,15 +208,7 @@ public class Reproductor extends Observable {
 	 */
 	private void insertarEnRecientes(Cancion c)
 	{
-		// Defino recientes como aquellas canciones DIFERENTES reproducidas.
-		if(recientes.contains(c))
-			return;
-		
-		if(recientes.size() == maxRecientes)
-		{
-			recientes.remove(0);
-		}
-		recientes.add(c);
+		observadorReproduccion.updateRepro(this, c);
 	}
 	
 	/**
@@ -290,7 +236,6 @@ public class Reproductor extends Observable {
 		}
 		catch (Exception e)
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -336,20 +281,6 @@ public class Reproductor extends Observable {
 			indicesDisponibles.remove(indice);
 		}
 		return cancionesDesordenadas;
-	}
-	
-	public void reproducirRecientesAleatoriamente()
-	{
-		if(recientes.size() == 0)
-			return;
-		reproducirListaAleatoriamente(recientes);
-	}
-	
-	public void reproducirRecientesSecuencialmente()
-	{
-		if(recientes.size() == 0)
-			return;
-		reproducirListaSecuencialmente(recientes);
 	}
 	
 	/**

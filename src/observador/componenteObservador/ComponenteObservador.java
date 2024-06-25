@@ -1,11 +1,11 @@
-package auxiliares;
+package observador.componenteObservador;
 
 import javax.swing.JComponent;
 
 import observador.Observable;
 import observador.Observer;
 
-public abstract class ComponenteObservador implements Observer{
+public abstract class ComponenteObservador implements Observer {
 	private JComponent componente;
 	
 	protected ComponenteObservador(JComponent componente)
